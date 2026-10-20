@@ -1,0 +1,2319 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Credit web transport",
+    "version": "0.1.0",
+    "description": "Единственный клиентский HTTP-контракт (ADR-0002). UI отложен: GET бизнес-страниц возвращает 501, MVC-модели и команды реализованы. Нет публичного JSON API."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "security": [
+    {
+      "session": []
+    }
+  ],
+  "paths": {
+    "/login": {
+      "get": {
+        "summary": "Встроенная login-форма Spring Security с CSRF",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        },
+        "security": []
+      },
+      "post": {
+        "summary": "Локальная аутентификация",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Успех: /app/applications; ошибка: /login?error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "username",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/logout": {
+      "post": {
+        "summary": "Завершить сессию",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "/login?logout"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_csrf"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/profile": {
+      "get": {
+        "summary": "Профиль",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      },
+      "post": {
+        "summary": "Сохранить профиль",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "ru",
+                      "en"
+                    ]
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version",
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/companies": {
+      "get": {
+        "summary": "Доступные компании",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/companies/{id}": {
+      "get": {
+        "summary": "Данные компании",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      },
+      "post": {
+        "summary": "Сохранить профиль компании",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "registeredAt": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "industry": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version",
+                  "name",
+                  "registeredAt",
+                  "industry"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/credit": {
+      "get": {
+        "summary": "Каталог продуктов",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/credit/{product_id}": {
+      "get": {
+        "summary": "Условия продукта",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/applications": {
+      "get": {
+        "summary": "Мои заявки",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      },
+      "post": {
+        "summary": "Создать черновик",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "companyId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "productId": {
+                    "type": "string",
+                    "enum": [
+                      "working-capital",
+                      "equipment"
+                    ]
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "termMonths": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 120
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "revenueMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "expensesMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "debtMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "period": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+                    "nullable": true
+                  },
+                  "documentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 20
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "companyId",
+                  "productId",
+                  "amountMinor",
+                  "termMonths",
+                  "purpose"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/applications/{id}": {
+      "get": {
+        "summary": "Детали заявки",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      },
+      "post": {
+        "summary": "Сохранить черновик / уточнение",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "termMonths": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 120
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "revenueMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "expensesMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "debtMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "nullable": true
+                  },
+                  "period": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+                    "nullable": true
+                  },
+                  "documentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 20
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version",
+                  "amountMinor",
+                  "termMonths",
+                  "purpose"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/applications/{id}/status": {
+      "get": {
+        "summary": "Этап, обработка и следующее действие",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/applications/{id}/history": {
+      "get": {
+        "summary": "История заявки",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/offers/{id}": {
+      "get": {
+        "summary": "Условия предложения",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/contracts/{id}": {
+      "get": {
+        "summary": "Договор (имитация)",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "501": {
+            "description": "Frontend отложен; данные уже загружены в MVC model",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Содержимое файла или системная страница"
+          }
+        }
+      }
+    },
+    "/app/applications/{id}/submit": {
+      "post": {
+        "summary": "submit",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/applications/{id}/resubmit": {
+      "post": {
+        "summary": "resubmit",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/applications/{id}/cancel": {
+      "post": {
+        "summary": "cancel",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/documents": {
+      "post": {
+        "summary": "Загрузить приватный документ",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "companyId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "FINANCIAL_REPORT",
+                      "OTHER"
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "companyId",
+                  "kind",
+                  "file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/documents/{id}/content": {
+      "get": {
+        "summary": "Скачать документ после проверки membership",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "200": {
+            "description": "Приватный документ с Content-Disposition: attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/offers/{id}/accept": {
+      "post": {
+        "summary": "accept",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/offers/{id}/decline": {
+      "post": {
+        "summary": "decline",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/contracts/{id}/sign-simulated": {
+      "post": {
+        "summary": "sign-simulated",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app/contracts/{id}/disburse-simulated": {
+      "post": {
+        "summary": "disburse-simulated",
+        "parameters": [
+          {
+            "name": "HX-Request",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Сессия истекла; для HTMX HX-Redirect: /login"
+          },
+          "403": {
+            "description": "Нет CSRF/прав"
+          },
+          "404": {
+            "description": "Объект не найден или недоступен"
+          },
+          "409": {
+            "description": "Конфликт version / command_id / состояния"
+          },
+          "422": {
+            "description": "Ошибки полей, text/html"
+          },
+          "503": {
+            "description": "Временная техническая ошибка, text/html + X-Trace-Id"
+          },
+          "303": {
+            "description": "Команда выполнена",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "HTMX: навигация всего окна",
+            "headers": {
+              "HX-Redirect": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "_csrf": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "_csrf",
+                  "command_id",
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "SESSION"
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+Third-party components and simulated integrations
+
+Versions are pinned in pom.xml, the Spring Boot BOM, Maven Wrapper and compose.yaml.
+- Java 21 / Eclipse Temurin (Docker runtime 21.0.8+9): GPLv2 with Classpath Exception; eclipse-temurin image includes its own notices.
+- Apache Maven 3.9.9 / Maven Wrapper 3.3.4: Apache-2.0.
+- Spring Boot 3.5.7, Spring Framework, Spring Security, Spring Session JDBC, Spring Data, Micrometer: Apache-2.0 (versions managed by Spring Boot BOM).
+- Hibernate ORM (BOM-managed): LGPL-2.1-or-later.
+- Flyway Community (BOM-managed): Apache-2.0; no paid edition required.
+- PostgreSQL 17.6, JDBC driver: PostgreSQL / BSD-2-Clause respectively.
+- db-scheduler 15.6.0: Apache-2.0; scheduled_tasks schema adapted from its PostgreSQL example.
+- AWS SDK for Java v2, S3 2.31.54: Apache-2.0.
+- Garage 2.1.0: AGPL-3.0-or-later, unmodified standalone container (https://git.deuxfleurs.fr/Deuxfleurs/garage).
+- WireMock 3.13.1: Apache-2.0.
+- springdoc-openapi 2.8.14 and Swagger UI transitively: Apache-2.0.
+- Nginx 1.28.0 / nginx-unprivileged image: BSD-2-Clause / Apache-2.0 image packaging.
+- Testcontainers 1.21.3: MIT; JUnit: EPL-2.0; AssertJ: Apache-2.0; Mockito: MIT.
+- Alpine Linux and Ubuntu base images contain components under their respective licenses; see image notices.
+
+Application datasets, accounts, companies, financial reports and WireMock fixtures are synthetic and authored for this prototype. Registry/EGRUL/EGRIP, tax/FNS and BKI integrations are local simulations; no government or banking API is called. Loan products, decision rules, contracts, signatures and ledger entries are synthetic, with no actual legal signing or payments.
+
+AlwaysRejectScorer is a temporary deterministic rejection stub, not a trained model, dataset or actual banking policy. No LLM, external inference provider, paid API, SMS, email or messaging integration is required. Thymeleaf/HTMX/Bootstrap frontend implementation is deferred and these assets are not bundled in this backend version.

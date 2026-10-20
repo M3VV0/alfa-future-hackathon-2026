@@ -1,0 +1,11 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/(registry|tax|bki)/9900000090"
+  },
+  "response": {
+    "status": 503,
+    "fixedDelayMilliseconds": 500
+  }
+}

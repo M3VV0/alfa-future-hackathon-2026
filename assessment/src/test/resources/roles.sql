@@ -1,0 +1,6 @@
+CREATE ROLE credit LOGIN PASSWORD 'test-credit-password';
+CREATE ROLE assessment LOGIN PASSWORD 'test-assessment-password';
+CREATE SCHEMA core AUTHORIZATION credit;
+CREATE SCHEMA auth AUTHORIZATION credit;
+CREATE SCHEMA assessment AUTHORIZATION assessment;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;

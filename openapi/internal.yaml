@@ -1,0 +1,646 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Credit internal service contracts",
+    "version": "0.1.0",
+    "description": "Доступны только внутри сети Docker. X-Service-Token обязателен. JSON snake_case. Скорер всегда возвращает отказ."
+  },
+  "servers": [
+    {
+      "url": "http://assessment-app:8081"
+    }
+  ],
+  "security": [
+    {
+      "serviceToken": []
+    }
+  ],
+  "paths": {
+    "/request": {
+      "post": {
+        "summary": "Надёжно принять запрос; повторы с тем же payload безопасны",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Принято после commit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверный service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный request/job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт ключа/payload/hash/версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Некорректная схема/скорер/баллы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Техническая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requests/{id}": {
+      "get": {
+        "summary": "Сохранённый результат для reconciliation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверный service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный request/job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт ключа/payload/hash/версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Некорректная схема/скорер/баллы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Техническая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/processed": {
+      "servers": [
+        {
+          "url": "http://credit-app:8080"
+        }
+      ],
+      "post": {
+        "summary": "Inbox callback: точный повтор 200; устаревший результат 200 IGNORED",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentResult"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Применено либо проигнорировано",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "disposition": {
+                      "type": "string",
+                      "enum": [
+                        "ACCEPTED",
+                        "IGNORED"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверный service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный request/job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт ключа/payload/hash/версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Некорректная схема/скорер/баллы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Техническая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/jobs/{id}/replay": {
+      "servers": [
+        {
+          "url": "http://credit-app:8080"
+        },
+        {
+          "url": "http://assessment-app:8081"
+        }
+      ],
+      "post": {
+        "summary": "Создать новое durable задание из FAILED с сохранением старой диагностики",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SCHEDULED"
+          },
+          "401": {
+            "description": "Неверный service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный request/job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт ключа/payload/hash/версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Некорректная схема/скорер/баллы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Техническая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/registry/{inn}": {
+      "servers": [
+        {
+          "url": "http://mocks:8080"
+        }
+      ],
+      "get": {
+        "summary": "Синтетическая интеграция registry",
+        "security": [],
+        "parameters": [
+          {
+            "name": "inn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Версионированная фикстура с found / fixtureVersion; неизвестный ИНН found=false"
+          },
+          "503": {
+            "description": "Демонстрация временного сбоя"
+          }
+        }
+      }
+    },
+    "/tax/{inn}": {
+      "servers": [
+        {
+          "url": "http://mocks:8080"
+        }
+      ],
+      "get": {
+        "summary": "Синтетическая интеграция tax",
+        "security": [],
+        "parameters": [
+          {
+            "name": "inn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Версионированная фикстура с found / fixtureVersion; неизвестный ИНН found=false"
+          },
+          "503": {
+            "description": "Демонстрация временного сбоя"
+          }
+        }
+      }
+    },
+    "/bki/{inn}": {
+      "servers": [
+        {
+          "url": "http://mocks:8080"
+        }
+      ],
+      "get": {
+        "summary": "Синтетическая интеграция bki",
+        "security": [],
+        "parameters": [
+          {
+            "name": "inn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Версионированная фикстура с found / fixtureVersion; неизвестный ИНН found=false"
+          },
+          "503": {
+            "description": "Демонстрация временного сбоя"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "serviceToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Token"
+      }
+    },
+    "schemas": {
+      "AssessmentRequest": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "application_id",
+          "revision",
+          "input_hash",
+          "schema_version",
+          "provider",
+          "model_version",
+          "input",
+          "trace_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "application_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "input_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "schema_version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "rules"
+            ]
+          },
+          "model_version": {
+            "type": "string",
+            "enum": [
+              "stub_reject_v1"
+            ]
+          },
+          "input": {
+            "type": "object",
+            "description": "Неизменяемый snapshot: draft, company, product, sources"
+          },
+          "trace_id": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssessmentResult": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "application_id",
+          "revision",
+          "input_hash",
+          "schema_version",
+          "provider",
+          "model_version",
+          "event_id",
+          "score",
+          "risk_band",
+          "factors",
+          "stop_flags"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "application_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "input_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "schema_version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "rules"
+            ]
+          },
+          "model_version": {
+            "type": "string",
+            "enum": [
+              "stub_reject_v1"
+            ]
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 105
+          },
+          "risk_band": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "factors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "points"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "points": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 105
+                }
+              }
+            }
+          },
+          "stop_flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestStatus": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED"
+            ]
+          },
+          "callback_state": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "DELIVERED",
+              "FAILED"
+            ]
+          },
+          "result": {
+            "$ref": "#/components/schemas/AssessmentResult",
+            "nullable": true
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "code",
+          "trace_id"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "trace_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

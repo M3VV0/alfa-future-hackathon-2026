@@ -1,0 +1,398 @@
+{
+  "info": {
+    "name": "Credit backend web-only smoke",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Использует cookie jar, реальные формы/CSRF и единственные web-маршруты. Укажите password из DEMO_PASSWORD и рабочий каталог репозитория для отчёта. GET статуса пока 501; полный результат автоматически проверяет demo/smoke.py через локальную БД."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "password",
+      "value": "local-demo-password"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 Login / CSRF",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/login",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Login form\", () => pm.response.to.have.status(200));",
+              "const tag = pm.response.text().match(/<input[^>]*name=\"_csrf\"[^>]*>/);",
+              "if (!tag) throw new Error(\"Missing CSRF input\");",
+              "pm.collectionVariables.set(\"csrf\", tag[0].match(/value=\"([^\"]+)\"/)[1]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 Authenticate",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/login",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "_csrf",
+              "value": "{{csrf}}",
+              "type": "text"
+            },
+            {
+              "key": "username",
+              "value": "alice",
+              "type": "text"
+            },
+            {
+              "key": "password",
+              "value": "{{password}}",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Authenticated\", () => pm.response.to.have.status(302));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 Renew CSRF after login",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/login",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Login form\", () => pm.response.to.have.status(200));",
+              "const tag = pm.response.text().match(/<input[^>]*name=\"_csrf\"[^>]*>/);",
+              "if (!tag) throw new Error(\"Missing CSRF input\");",
+              "pm.collectionVariables.set(\"csrf\", tag[0].match(/value=\"([^\"]+)\"/)[1]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 Upload financial report",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/app/documents",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "_csrf",
+              "value": "{{csrf}}",
+              "type": "text"
+            },
+            {
+              "key": "command_id",
+              "value": "{{command_id}}",
+              "type": "text"
+            },
+            {
+              "key": "companyId",
+              "value": "20000000-0000-0000-0000-000000000001",
+              "type": "text"
+            },
+            {
+              "key": "kind",
+              "value": "FINANCIAL_REPORT",
+              "type": "text"
+            },
+            {
+              "key": "file",
+              "type": "file",
+              "src": "demo/financial-report-1.json",
+              "contentType": "application/json"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"command_id\", pm.variables.replaceIn(\"{{$guid}}\"));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Uploaded\", () => pm.response.to.have.status(303));",
+              "pm.collectionVariables.set(\"document_id\", pm.response.headers.get(\"Location\").split(\"#document-\")[1]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 Create application",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/app/applications",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "_csrf",
+              "value": "{{csrf}}",
+              "type": "text"
+            },
+            {
+              "key": "command_id",
+              "value": "{{command_id}}",
+              "type": "text"
+            },
+            {
+              "key": "companyId",
+              "value": "20000000-0000-0000-0000-000000000001",
+              "type": "text"
+            },
+            {
+              "key": "productId",
+              "value": "working-capital",
+              "type": "text"
+            },
+            {
+              "key": "amountMinor",
+              "value": "100000000",
+              "type": "text"
+            },
+            {
+              "key": "termMonths",
+              "value": "12",
+              "type": "text"
+            },
+            {
+              "key": "purpose",
+              "value": "Демо-заявка",
+              "type": "text"
+            },
+            {
+              "key": "revenueMinor",
+              "value": "100000000",
+              "type": "text"
+            },
+            {
+              "key": "expensesMinor",
+              "value": "60000000",
+              "type": "text"
+            },
+            {
+              "key": "debtMinor",
+              "value": "5000000",
+              "type": "text"
+            },
+            {
+              "key": "period",
+              "value": "2026-09",
+              "type": "text"
+            },
+            {
+              "key": "documentIds",
+              "value": "{{document_id}}",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"command_id\", pm.variables.replaceIn(\"{{$guid}}\"));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Created\", () => pm.response.to.have.status(303));",
+              "pm.collectionVariables.set(\"application_id\", pm.response.headers.get(\"Location\").split(\"/\").pop());"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 Submit application",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/app/applications/{{application_id}}/submit",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "_csrf",
+              "value": "{{csrf}}",
+              "type": "text"
+            },
+            {
+              "key": "command_id",
+              "value": "{{command_id}}",
+              "type": "text"
+            },
+            {
+              "key": "version",
+              "value": "0",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"command_id\", pm.variables.replaceIn(\"{{$guid}}\"));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Submitted\", () => pm.response.to.have.status(303));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7 Status transport (501 until frontend)",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/app/applications/{{application_id}}/status",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Frontend deferred\", () => pm.response.to.have.status(501));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8 Download private report",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/app/documents/{{document_id}}/content",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"File accessible\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9 Logout",
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/logout",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "_csrf",
+              "value": "{{csrf}}",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Logged out\", () => pm.response.to.have.status(302));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

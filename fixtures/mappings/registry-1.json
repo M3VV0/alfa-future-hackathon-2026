@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/registry/9900000017"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "found": true,
+      "fixtureVersion": "synthetic_v1",
+      "active": true,
+      "registeredAt": "2023-01-01",
+      "okved": "47.19"
+    }
+  }
+}

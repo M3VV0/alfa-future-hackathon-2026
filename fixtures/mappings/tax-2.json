@@ -1,0 +1,17 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/tax/9900000024"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "found": true,
+      "fixtureVersion": "synthetic_v1",
+      "discrepancy": false
+    }
+  }
+}

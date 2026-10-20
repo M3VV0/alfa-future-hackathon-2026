@@ -1,0 +1,1 @@
+CREATE TABLE assessment.request(request_id uuid PRIMARY KEY, payload_hash varchar(64) NOT NULL, payload jsonb NOT NULL, status varchar(20) NOT NULL, result jsonb, callback_state varchar(20) NOT NULL DEFAULT 'PENDING', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());

@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/bki/9900000017"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "found": true,
+      "fixtureVersion": "synthetic_v1",
+      "monthlyPaymentMinor": 5000000,
+      "maxOverdueDays": 0
+    }
+  }
+}

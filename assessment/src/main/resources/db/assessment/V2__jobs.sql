@@ -1,0 +1,5 @@
+CREATE TABLE assessment.job(id uuid PRIMARY KEY, kind varchar(50) NOT NULL, dedup_key varchar(200) UNIQUE NOT NULL, payload jsonb NOT NULL, status varchar(20) NOT NULL, attempts int NOT NULL DEFAULT 0, error_code varchar(100), trace_id varchar(64) NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX ON assessment.job(status,created_at);
+CREATE TABLE assessment.job_attempt(job_id uuid NOT NULL REFERENCES assessment.job, attempt int NOT NULL, error_code varchar(100) NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(job_id,attempt));
+CREATE TABLE assessment.scheduled_tasks(task_name varchar(100) NOT NULL, task_instance varchar(100) NOT NULL, task_data bytea, execution_time timestamptz NOT NULL, picked boolean NOT NULL, picked_by varchar(100), last_success timestamptz, last_failure timestamptz, consecutive_failures int, last_heartbeat timestamptz, version bigint NOT NULL, PRIMARY KEY(task_name,task_instance));
+CREATE INDEX ON assessment.scheduled_tasks(execution_time);
