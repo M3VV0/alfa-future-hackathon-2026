@@ -1,0 +1,156 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Данные компании', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<a class="back-link" href="/app/companies"
+        >
+<svg th:replace="~{fragments/layout :: icon('arrow-left')}">
+</svg>Мой
+        бизнес</a
+      >
+<div class="page-heading">
+<div>
+<span class="eyebrow">Профиль компании</span>
+<h1 th:text="${company.name}">
+</h1>
+<p>Актуальные сведения помогут быстрее заполнить новую заявку.</p>
+</div>
+<span class="status-badge success">Представитель компании</span>
+</div>
+<div class="detail-grid">
+<div class="detail-main">
+<section
+            id="company-editor"
+            th:fragment="editor"
+            class="surface form-card"
+          >
+<div class="section-heading">
+<span class="section-number"
+                >
+<svg th:replace="~{fragments/layout :: icon('business')}">
+</svg
+              >
+</span>
+<div>
+<h2>Основные сведения</h2>
+<p>Эти данные используются при создании заявки</p>
+</div>
+</div>
+<div
+              class="notice notice-success"
+              th:if="${param.saved != null}"
+              role="status"
+            >
+              Изменения сохранены.
+            </div>
+<div
+              class="notice notice-danger"
+              th:if="${formError != null}"
+              role="alert"
+              th:text="${formError}"
+            >
+</div>
+<form
+              method="post"
+              th:action="@{/app/companies/{id}(id=${company.id})}"
+              th:attr="hx-post=${'/app/companies/' + company.id}"
+              hx-target="#company-editor"
+              hx-swap="outerHTML"
+            >
+<input
+                type="hidden"
+                name="version"
+                th:value="${company.version}"
+              />
+<input
+                type="hidden"
+                name="command_id"
+                th:value="${@ui.command()}"
+              />
+<div class="form-grid">
+<div class="field full-width">
+<label for="company-name">Наименование компании</label
+                  >
+<input
+                    id="company-name"
+                    name="name"
+                    th:value="${company.name}"
+                    required
+                    maxlength="200"
+                    autocomplete="organization"
+                  />
+</div>
+<div class="field">
+<label for="company-inn">ИНН</label
+                  >
+<input
+                    id="company-inn"
+                    th:value="${company.inn}"
+                    readonly
+                  />
+<small
+                    >Идентификатор компании нельзя изменить в кабинете.</small
+                  >
+</div>
+<div class="field">
+<label for="registeredAt">Дата регистрации</label
+                  >
+<input
+                    id="registeredAt"
+                    type="date"
+                    name="registeredAt"
+                    th:value="${@ui.isoDate(company.registered_at)}"
+                    required
+                  />
+</div>
+<div class="field full-width">
+<label for="industry">Сфера деятельности</label
+                  >
+<input
+                    id="industry"
+                    name="industry"
+                    th:value="${@ui.field(company.profile,'industry')}"
+                    maxlength="100"
+                    required
+                    placeholder="Например, розничная торговля"
+                  />
+</div>
+</div>
+<div class="form-actions">
+<button class="button button-primary" type="submit">
+                  Сохранить изменения
+                </button>
+</div>
+</form>
+</section>
+<section th:replace="~{fragments/documents :: panel}">
+</section>
+</div>
+<aside class="application-aside">
+<div class="aside-tip">
+<svg th:replace="~{fragments/layout :: icon('info')}">
+</svg>
+<h3>Один раз — для всех заявок</h3>
+<p>
+              Обновлённые сведения будут доступны в новых заявках. Данные уже
+              отправленных заявок сохранятся в первоначальном виде.
+            </p>
+</div>
+<a
+            class="button button-secondary button-full"
+            th:href="@{/app/applications/new(companyId=${company.id})}"
+            >Создать заявку<svg
+              th:replace="~{fragments/layout :: icon('plus')}"
+            >
+</svg
+          >
+</a>
+</aside>
+</div>
+</section>
+</body>
+</html>

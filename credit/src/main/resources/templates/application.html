@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: page('Заявка', ~{::content})}">
+<body>
+<section th:fragment="content" class="page-content">
+<div th:fragment="detail">
+<a class="back-link" href="/app/applications">
+<svg th:replace="~{fragments/layout :: icon('arrow-left')}">
+</svg>Все заявки</a>
+<div class="page-heading">
+<div>
+<span class="eyebrow" th:text="${'Заявка № ' + @ui.shortId(loan.id)}">
+</span>
+<h1 th:text="${@ui.product(loan.productId)}">
+</h1>
+<p th:text="${company.name + ' · ИНН ' + company.inn}">
+</p>
+</div>
+<span th:replace="~{fragments/status-chrome :: badge(false)}">
+</span>
+</div>
+<div th:replace="~{fragments/status-chrome :: journey(false)}">
+</div>
+<div class="notice notice-success saved-notice" role="status" th:if="${param.saved != null}">
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg>
+<p>Изменения сохранены. Проверьте документы и отправьте заявку, когда всё будет готово.</p>
+</div>
+<div class="detail-grid">
+<div class="detail-main">
+<div id="application-status" th:fragment="status" th:attr="hx-get=${@ui.active(loan.status) and loan.processingState != 'FAILED' ? '/app/applications/' + loan.id + '/status' : null},hx-trigger=${@ui.active(loan.status) and loan.processingState != 'FAILED' ? 'every 3s' : null}" hx-swap="outerHTML" aria-live="polite" aria-atomic="false">
+<noscript th:if="${@ui.active(loan.status)}">
+<a class="button button-secondary" th:href="@{/app/applications/{id}(id=${loan.id})}">Обновить статус</a>
+</noscript>
+<section class="surface status-card" th:classappend="${loan.processingState == 'FAILED' or loan.processingState == 'RETRY_WAIT' ? 'status-warning' : 'status-' + @ui.tone(loan.status)}">
+<span class="status-visual">
+<svg th:replace="~{fragments/layout :: icon(${loan.processingState == 'FAILED' ? 'info' : (@ui.active(loan.status) ? 'clock' : (loan.status == 'REJECTED' ? 'document' : (loan.status == 'NEEDS_INFO' ? 'edit' : 'check')))})}">
+</svg>
+</span>
+<div class="status-copy">
+<span class="mini-label" th:text="${loan.processingState == 'FAILED' or loan.processingState == 'RETRY_WAIT' ? 'Техническая задержка' : @ui.status(loan.status)}">
+</span>
+<h2 th:text="${loan.processingState == 'FAILED' ? 'Обработка временно приостановлена' : (loan.processingState == 'RETRY_WAIT' ? 'Нам потребуется ещё немного времени' : (loan.status == 'REJECTED' ? 'Пока не можем предложить финансирование' : (loan.status == 'NEEDS_INFO' ? 'Нужно немного больше информации' : (@ui.active(loan.status) ? 'Ваша заявка на рассмотрении' : (loan.status == 'DRAFT' ? 'Продолжите, когда будете готовы' : @ui.status(loan.status))))))}">
+</h2>
+<p th:text="${loan.processingState == 'FAILED' ? 'Данные сохранены. Для продолжения требуется восстановление сервиса. Это не кредитный отказ.' : (loan.processingState == 'RETRY_WAIT' ? 'Данные сохранены. Мы автоматически повторим обработку, когда сервис станет доступен.' : (loan.status == 'DRAFT' ? 'Заполните сведения, добавьте финансовый отчёт и отправьте заявку на рассмотрение.' : (@ui.active(loan.status) ? 'Проверяем сведения о компании и параметры финансирования. Статус на этой странице обновляется автоматически.' : (loan.status == 'REJECTED' ? 'Рассмотрение завершено. История заявки сохранена.' : loan.nextAction))))}">
+</p>
+<p class="decision-reason" th:each="reason : ${loan.decisionExplanations}" th:text="${@ui.reason(reason)}">
+</p>
+<ul class="info-request-list" th:if="${loan.status == 'NEEDS_INFO'}">
+<th:block th:each="request : ${loan.infoRequests}">
+<li th:if="${request.answered_at == null}" th:each="field : ${@ui.info(request.fields)}" th:text="${field}">
+</li>
+</th:block>
+</ul>
+<a th:if="${loan.status == 'NEEDS_INFO'}" class="button button-secondary" th:href="@{/app/applications/{id}(id=${loan.id},edit=true)} + '#draft-editor'">Дополнить заявку<svg th:replace="~{fragments/layout :: icon('arrow')}">
+</svg>
+</a>
+<a th:if="${loan.status == 'REJECTED' or loan.status == 'CANCELLED' or loan.status == 'DECLINED' or loan.status == 'EXPIRED'}" class="text-link" href="/app/credit">Вернуться к кредитным продуктам<svg th:replace="~{fragments/layout :: icon('arrow')}">
+</svg>
+</a>
+<a th:if="${loan.processingState == 'FAILED'}" class="button button-secondary" th:href="@{/app/applications/{id}(id=${loan.id})}">Обновить статус</a>
+<a th:each="offer : ${loan.offers}" th:if="${loan.status == 'OFFERED'}" class="button button-primary" th:href="@{/app/offers/{id}(id=${offer.id})}">Посмотреть предложение</a>
+<a th:each="contract : ${loan.contracts}" class="button button-secondary" th:href="@{/app/contracts/{id}(id=${contract.id})}">Открыть договор</a>
+</div>
+</section>
+<section class="surface history-card" th:fragment="history">
+<div class="section-heading">
+<div>
+<h2>История заявки</h2>
+<p>Все важные события сохраняются здесь</p>
+</div>
+<svg th:replace="~{fragments/layout :: icon('clock')}">
+</svg>
+</div>
+<ol class="timeline">
+<li th:each="event : ${loan.history}">
+<span class="timeline-dot">
+</span>
+<div>
+<strong th:text="${@ui.status(event.to_status)}">
+</strong>
+<small th:text="${'Версия данных ' + event.revision}">
+</small>
+</div>
+<time th:text="${@ui.date(event.created_at)}">
+</time>
+</li>
+</ol>
+</section>
+<th:block th:if="${statusPoll == true}">
+<span th:replace="~{fragments/status-chrome :: badge(true)}">
+</span>
+<div th:replace="~{fragments/status-chrome :: journey(true)}">
+</div>
+</th:block>
+</div>
+<section th:if="${@ui.editable(loan.status)}" id="draft-editor" th:fragment="editor">
+<form id="draft-form" method="post" th:action="@{/app/applications/{id}(id=${loan.id})}" th:attr="hx-post=${'/app/applications/' + loan.id}" hx-target="#draft-editor" hx-swap="outerHTML" th:object="${form}" class="editor-form">
+<input type="hidden" name="version" th:value="${loan.version}">
+<input type="hidden" name="command_id" th:value="${@ui.command()}">
+<section th:replace="~{fragments/loan-form :: fields}">
+</section>
+<div class="form-actions">
+<small>Изменения и выбор документов сохранятся в черновике</small>
+<button type="submit" class="button button-secondary">
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg>Сохранить изменения</button>
+</div>
+</form>
+</section>
+<section th:unless="${@ui.editable(loan.status)}" class="surface form-card">
+<div class="section-heading">
+<span class="section-number">
+<svg th:replace="~{fragments/layout :: icon('paperclip')}">
+</svg>
+</span>
+<div>
+<h2>Документы заявки</h2>
+<p>Файлы, приложенные к этой версии данных</p>
+</div>
+</div>
+<div class="documents-empty" th:if="${#lists.isEmpty(documentIds)}">К этой версии заявки документы не приложены.</div>
+<div class="document-item" th:each="doc : ${company.documents}" th:if="${documentIds.contains(doc.id)}">
+<span class="file-icon">
+<svg th:replace="~{fragments/layout :: icon('document')}">
+</svg>
+</span>
+<span class="document-meta">
+<strong th:text="${doc.filename}">
+</strong>
+<small th:text="${doc.kind == 'FINANCIAL_REPORT' ? 'Финансовый отчёт' : 'Дополнительный документ'}">
+</small>
+</span>
+<a class="icon-button" th:href="@{/app/documents/{id}/content(id=${doc.id})}" th:attr="aria-label=${'Скачать ' + doc.filename}">
+<svg th:replace="~{fragments/layout :: icon('download')}">
+</svg>
+</a>
+</div>
+</section>
+<th:block th:if="${@ui.editable(loan.status)}">
+<section th:replace="~{fragments/documents :: panel}">
+</section>
+<section class="surface submit-card">
+<div>
+<h2>Всё готово к отправке?</h2>
+<p>Сначала сохраните изменения. После отправки данные текущей версии нельзя будет изменить.</p>
+</div>
+<div class="action-row">
+<form method="post" th:action="@{/app/applications/{id}/{action}(id=${loan.id},action=${loan.status == 'NEEDS_INFO' ? 'resubmit' : 'submit'})}" th:attr="hx-post=${'/app/applications/' + loan.id + (loan.status == 'NEEDS_INFO' ? '/resubmit' : '/submit')}" hx-swap="none" data-requires-saved>
+<input type="hidden" name="version" th:value="${loan.version}">
+<input type="hidden" name="command_id" th:value="${@ui.command()}">
+<button class="button button-primary" type="submit" th:text="${loan.status == 'NEEDS_INFO' ? 'Отправить повторно' : 'Отправить заявку'}">
+</button>
+</form>
+<form method="post" th:action="@{/app/applications/{id}/cancel(id=${loan.id})}" th:attr="hx-post=${'/app/applications/' + loan.id + '/cancel'}" hx-swap="none">
+<input type="hidden" name="version" th:value="${loan.version}">
+<input type="hidden" name="command_id" th:value="${@ui.command()}">
+<button class="button button-ghost" type="submit">Отменить заявку</button>
+</form>
+</div>
+<p class="unsaved-warning" role="alert" hidden>Есть несохранённые изменения. Сначала нажмите «Сохранить изменения».</p>
+</section>
+</th:block>
+</div>
+<aside class="application-aside">
+<section class="surface summary-card">
+<span class="mini-label">Параметры заявки</span>
+<h2 th:text="${@ui.money(@ui.field(loan.draft,'amountMinor'))}">
+</h2>
+<p th:text="${@ui.field(loan.draft,'purpose')}">
+</p>
+<dl class="summary-list">
+<div>
+<dt>Срок</dt>
+<dd th:text="${@ui.field(loan.draft,'termMonths') + ' мес.'}">
+</dd>
+</div>
+<div>
+<dt>Ставка продукта</dt>
+<dd th:text="${@ui.percent(product.annual_rate)}">
+</dd>
+</div>
+<div>
+<dt>Версия данных</dt>
+<dd th:text="${loan.revision == 0 ? 'Черновик' : loan.revision}">
+</dd>
+</div>
+<div>
+<dt>Компания</dt>
+<dd th:text="${company.name}">
+</dd>
+</div>
+</dl>
+</section>
+<div class="aside-tip">
+<svg th:replace="~{fragments/layout :: icon('shield')}">
+</svg>
+<h3>Данные сохранены</h3>
+<p>Можно закрыть страницу и вернуться позже. Статус и история заявки останутся в кабинете.</p>
+</div>
+</aside>
+</div>
+</div>
+</section>
+</body>
+</html>

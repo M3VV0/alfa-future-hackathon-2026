@@ -168,6 +168,7 @@ public class Applications {
     result.put("id", app.id);
     result.put("companyId", app.companyId);
     result.put("productId", app.productId);
+    result.put("productVersion", app.productVersion);
     result.put("status", app.status);
     result.put("processingState", app.processingState);
     result.put("version", app.version);

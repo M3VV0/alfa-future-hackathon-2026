@@ -1,0 +1,36 @@
+<span
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="badge(oob)"
+  id="loan-status-badge"
+  class="status-badge"
+  th:classappend="${@ui.tone(loan.status)}"
+  th:text="${@ui.status(loan.status)}"
+  th:attr="hx-swap-oob=${oob ? 'outerHTML' : null}"
+>
+</span>
+<div
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="journey(oob)"
+  id="loan-journey"
+  th:attr="hx-swap-oob=${oob ? 'outerHTML' : null}"
+  class="journey"
+>
+<div th:classappend="${@ui.step(loan.status) > 1 ? 'done' : 'current'}">
+<span>1</span>
+<strong>Данные и документы</strong>
+</div>
+<i>
+</i>
+<div
+    th:classappend="${@ui.step(loan.status) == 2 ? 'current' : (@ui.step(loan.status) > 2 ? 'done' : '')}"
+  >
+<span>2</span>
+<strong>Рассмотрение</strong>
+</div>
+<i>
+</i>
+<div th:classappend="${@ui.step(loan.status) == 3 ? 'current' : ''}">
+<span>3</span>
+<strong>Результат</strong>
+</div>
+</div>

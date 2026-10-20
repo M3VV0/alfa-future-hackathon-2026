@@ -1,0 +1,22 @@
+<div
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="message"
+  class="notice notice-danger error-feedback"
+  role="alert"
+>
+<svg th:replace="~{fragments/layout :: icon('info')}">
+</svg>
+<div>
+<strong
+      th:text="${errorStatus == 409 ? 'Данные уже изменились' : 'Не удалось выполнить действие'}"
+    >
+</strong>
+<p th:text="${errorMessage}">
+</p>
+<a class="text-link" href="" th:if="${errorStatus == 409}"
+      >Обновить страницу</a
+    >
+<small th:text="${'Номер обращения: ' + traceId}">
+</small>
+</div>
+</div>

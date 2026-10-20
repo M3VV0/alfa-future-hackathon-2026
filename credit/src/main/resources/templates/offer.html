@@ -1,0 +1,114 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Предложение', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<a class="back-link" th:href="@{/app/applications/{id}(id=${loan.id})}"
+        >
+<svg th:replace="~{fragments/layout :: icon('arrow-left')}">
+</svg>К
+        заявке</a
+      >
+<div class="page-heading">
+<div>
+<span class="eyebrow">Условия финансирования</span>
+<h1>Предложение по вашей заявке</h1>
+<p>Проверьте условия перед принятием.</p>
+</div>
+<span
+          class="status-badge success"
+          th:text="${@ui.status(loan.status)}"
+        >
+</span>
+</div>
+<section class="surface form-card">
+<div th:if="${offer.counteroffer}" class="notice notice-warning">
+          Предлагаем меньшую сумму при выбранном сроке. Условия отличаются от
+          вашего запроса.
+        </div>
+<div class="offer-numbers">
+<div>
+<span>Сумма кредита</span
+            >
+<strong th:text="${@ui.money(offer.amount_minor)}">
+</strong>
+</div>
+<div>
+<span>Ежемесячный платёж</span
+            >
+<strong
+              th:text="${@ui.money(offer.monthly_payment_minor)}"
+            >
+</strong>
+</div>
+<div>
+<span>Ставка</span
+            >
+<strong th:text="${@ui.percent(offer.annual_rate)}">
+</strong>
+</div>
+<div>
+<span>Срок</span
+            >
+<strong th:text="${offer.term_months + ' мес.'}">
+</strong>
+</div>
+</div>
+<p
+          class="muted"
+          th:text="${'Предложение действительно до ' + @ui.date(offer.expires_at) + ' (МСК)'}"
+        >
+</p>
+<div class="notice notice-neutral">
+          Договор, подписание и выдача в этом кабинете являются имитацией.
+          Реальные обязательства и платежи не возникают.
+        </div>
+<div class="action-row" th:if="${loan.status == 'OFFERED'}">
+<form
+            method="post"
+            th:action="@{/app/offers/{id}/accept(id=${offer.id})}"
+            th:attr="hx-post=${'/app/offers/' + offer.id + '/accept'}"
+            hx-swap="none"
+          >
+<input
+              type="hidden"
+              name="version"
+              th:value="${loan.version}"
+            />
+<input
+              type="hidden"
+              name="command_id"
+              th:value="${@ui.command()}"
+            />
+<button class="button button-primary" type="submit">
+              Принять условия
+            </button>
+</form>
+<form
+            method="post"
+            th:action="@{/app/offers/{id}/decline(id=${offer.id})}"
+            th:attr="hx-post=${'/app/offers/' + offer.id + '/decline'}"
+            hx-swap="none"
+          >
+<input
+              type="hidden"
+              name="version"
+              th:value="${loan.version}"
+            />
+<input
+              type="hidden"
+              name="command_id"
+              th:value="${@ui.command()}"
+            />
+<button class="button button-secondary" type="submit">
+              Отклонить предложение
+            </button>
+</form>
+</div>
+</section>
+</section>
+</body>
+</html>

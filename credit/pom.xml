@@ -8,6 +8,10 @@
   <artifactId>credit</artifactId>
   <dependencies>
     <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+    <dependency>
       <groupId>ru.alfa.credit</groupId>
       <artifactId>platform</artifactId>
     </dependency>

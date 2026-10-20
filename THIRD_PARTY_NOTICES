@@ -3,6 +3,7 @@ Third-party components and simulated integrations
 Versions are pinned in pom.xml, the Spring Boot BOM, Maven Wrapper and compose.yaml.
 - Java 21 / Eclipse Temurin (Docker runtime 21.0.8+9): GPLv2 with Classpath Exception; eclipse-temurin image includes its own notices.
 - Apache Maven 3.9.9 / Maven Wrapper 3.3.4: Apache-2.0.
+- Bootstrap 5.3.3: MIT; HTMX 2.0.4: Zero-Clause BSD (0BSD); vendored unchanged with license files.
 - Spring Boot 3.5.7, Spring Framework, Spring Security, Spring Session JDBC, Spring Data, Micrometer: Apache-2.0 (versions managed by Spring Boot BOM).
 - Hibernate ORM (BOM-managed): LGPL-2.1-or-later.
 - Flyway Community (BOM-managed): Apache-2.0; no paid edition required.
@@ -18,4 +19,4 @@ Versions are pinned in pom.xml, the Spring Boot BOM, Maven Wrapper and compose.y
 
 Application datasets, accounts, companies, financial reports and WireMock fixtures are synthetic and authored for this prototype. Registry/EGRUL/EGRIP, tax/FNS and BKI integrations are local simulations; no government or banking API is called. Loan products, decision rules, contracts, signatures and ledger entries are synthetic, with no actual legal signing or payments.
 
-AlwaysRejectScorer is a temporary deterministic rejection stub, not a trained model, dataset or actual banking policy. No LLM, external inference provider, paid API, SMS, email or messaging integration is required. Thymeleaf/HTMX/Bootstrap frontend implementation is deferred and these assets are not bundled in this backend version.
+AlwaysRejectScorer is a temporary deterministic rejection stub, not a trained model, dataset or actual banking policy. No LLM, external inference provider, paid API, SMS, email or messaging integration is required. Frontend uses Thymeleaf (Apache-2.0, Spring Boot BOM), locally vendored HTMX 2.0.4 and Bootstrap 5.3.3. Their license texts are included beside the assets in credit/src/main/resources/static/assets/vendor. Custom SVG icons and CSS illustrations are authored in this project.

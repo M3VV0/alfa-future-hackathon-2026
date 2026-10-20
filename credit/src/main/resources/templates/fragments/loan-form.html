@@ -1,0 +1,207 @@
+<section
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="fields"
+  class="surface form-card"
+>
+<div class="section-heading">
+<span class="section-number">01</span>
+<div>
+<h2>Параметры финансирования</h2>
+<p>На что и в каком объёме нужны средства вашему бизнесу</p>
+</div>
+</div>
+<div
+    class="notice notice-danger"
+    role="alert"
+    th:if="${#fields.hasAnyErrors()}"
+  >
+<div>
+<strong>Проверьте данные в форме</strong>
+<p th:each="error : ${#fields.globalErrors()}" th:text="${error}">
+</p>
+<p>Исправьте выделенные поля. Введённые значения сохранены.</p>
+</div>
+</div>
+<div class="form-grid">
+<div class="field">
+<label for="amountRubles"
+        >Сумма кредита <span class="required-dot">*</span>
+</label
+      >
+<div class="input-unit">
+<input
+          id="amountRubles"
+          th:field="*{amountRubles}"
+          inputmode="decimal"
+          maxlength="24"
+          required
+          placeholder="1 000 000"
+          data-money
+          th:attr="aria-invalid=${#fields.hasErrors('amountRubles')},aria-describedby='amount-help amount-error'"
+        />
+<span>₽</span>
+</div>
+<small
+        id="amount-help"
+        th:text="${'По продукту: ' + @ui.money(product.min_minor) + ' — ' + @ui.money(product.max_minor)}"
+      >
+</small
+      >
+<span
+        id="amount-error"
+        class="field-error"
+        th:if="${#fields.hasErrors('amountRubles')}"
+        th:errors="*{amountRubles}"
+      >
+</span>
+</div>
+<div class="field">
+<label for="termMonths"
+        >Срок кредита <span class="required-dot">*</span>
+</label
+      >
+<div class="input-unit">
+<input
+          id="termMonths"
+          th:field="*{termMonths}"
+          type="number"
+          min="1"
+          max="120"
+          required
+          th:attr="aria-invalid=${#fields.hasErrors('termMonths')}"
+        />
+<span>мес.</span>
+</div>
+<small
+        th:text="${'По продукту: ' + product.min_months + '–' + product.max_months + ' месяцев'}"
+      >
+</small
+      >
+<span
+        class="field-error"
+        th:if="${#fields.hasErrors('termMonths')}"
+        th:errors="*{termMonths}"
+      >
+</span>
+</div>
+<div class="field full-width">
+<label for="purpose"
+        >Цель финансирования <span class="required-dot">*</span>
+</label
+      >
+<textarea
+        id="purpose"
+        th:field="*{purpose}"
+        rows="3"
+        maxlength="1000"
+        required
+        placeholder="Например, закупить товары к новому сезону"
+        th:attr="aria-invalid=${#fields.hasErrors('purpose')}"
+      >
+</textarea
+      >
+<span
+        class="field-error"
+        th:if="${#fields.hasErrors('purpose')}"
+        th:errors="*{purpose}"
+      >
+</span>
+</div>
+</div>
+<div class="form-divider">
+</div>
+<div class="section-heading">
+<span class="section-number">02</span>
+<div>
+<h2>Финансовые показатели</h2>
+<p>Среднемесячные суммы за выбранный отчётный период</p>
+</div>
+</div>
+<div class="form-grid">
+<div class="field">
+<label for="revenueRubles">Доходы бизнеса</label>
+<div class="input-unit">
+<input
+          id="revenueRubles"
+          th:field="*{revenueRubles}"
+          inputmode="decimal"
+          maxlength="24"
+          data-money
+          placeholder="Например, 1 000 000"
+          th:attr="aria-invalid=${#fields.hasErrors('revenueRubles')}"
+        />
+<span>₽ / мес.</span>
+</div>
+<span
+        class="field-error"
+        th:if="${#fields.hasErrors('revenueRubles')}"
+        th:errors="*{revenueRubles}"
+      >
+</span>
+</div>
+<div class="field">
+<label for="expensesRubles">Расходы бизнеса</label>
+<div class="input-unit">
+<input
+          id="expensesRubles"
+          th:field="*{expensesRubles}"
+          inputmode="decimal"
+          maxlength="24"
+          data-money
+          placeholder="Например, 600 000"
+          th:attr="aria-invalid=${#fields.hasErrors('expensesRubles')}"
+        />
+<span>₽ / мес.</span>
+</div>
+<span
+        class="field-error"
+        th:if="${#fields.hasErrors('expensesRubles')}"
+        th:errors="*{expensesRubles}"
+      >
+</span>
+</div>
+<div class="field">
+<label for="debtRubles">Платежи по действующим кредитам</label>
+<div class="input-unit">
+<input
+          id="debtRubles"
+          th:field="*{debtRubles}"
+          inputmode="decimal"
+          maxlength="24"
+          data-money
+          placeholder="0, если кредитов нет"
+          th:attr="aria-invalid=${#fields.hasErrors('debtRubles')}"
+        />
+<span>₽ / мес.</span>
+</div>
+<span
+        class="field-error"
+        th:if="${#fields.hasErrors('debtRubles')}"
+        th:errors="*{debtRubles}"
+      >
+</span>
+</div>
+<div class="field">
+<label for="period">Отчётный месяц</label
+      >
+<input
+        id="period"
+        th:field="*{period}"
+        type="month"
+        th:attr="aria-invalid=${#fields.hasErrors('period')}"
+      />
+<span
+        class="field-error"
+        th:if="${#fields.hasErrors('period')}"
+        th:errors="*{period}"
+      >
+</span>
+</div>
+</div>
+<p class="field-note">
+<svg th:replace="~{fragments/layout :: icon('info')}">
+</svg>Можно сохранить
+    черновик и дополнить финансовые сведения позже. Для рассмотрения понадобятся
+    все показатели и отчёт.
+  </p>
+</section>

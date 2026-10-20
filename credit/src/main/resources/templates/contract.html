@@ -1,0 +1,71 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Договор', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<a class="back-link" th:href="@{/app/applications/{id}(id=${loan.id})}"
+        >
+<svg th:replace="~{fragments/layout :: icon('arrow-left')}">
+</svg>К
+        заявке</a
+      >
+<div class="page-heading">
+<div>
+<span class="eyebrow">Оформление финансирования</span>
+<h1>Договор</h1>
+<p>
+            Демонстрационное оформление без юридических и денежных операций.
+          </p>
+</div>
+<span class="status-badge neutral">Имитация</span>
+</div>
+<section class="surface form-card">
+<div class="notice notice-warning">
+          Это синтетический договор. Все действия ниже выполняются только в
+          режиме имитации.
+        </div>
+<pre class="contract-text" th:text="${contract.text_content}">
+</pre>
+<p
+          th:if="${contract.signed_at != null}"
+          class="notice notice-success"
+          th:text="${'Подписан в режиме имитации: ' + @ui.date(contract.signed_at)}"
+        >
+</p>
+<form
+          th:if="${loan.status == 'ACCEPTED' or loan.status == 'SIGNED_SIMULATED'}"
+          method="post"
+          th:action="@{/app/contracts/{id}/{action}(id=${contract.id},action=${loan.status == 'ACCEPTED' ? 'sign-simulated' : 'disburse-simulated'})}"
+          th:attr="hx-post=${'/app/contracts/' + contract.id + (loan.status == 'ACCEPTED' ? '/sign-simulated' : '/disburse-simulated')}"
+          hx-swap="none"
+        >
+<input
+            type="hidden"
+            name="version"
+            th:value="${loan.version}"
+          />
+<input
+            type="hidden"
+            name="command_id"
+            th:value="${@ui.command()}"
+          />
+<button
+            class="button button-primary"
+            type="submit"
+            th:text="${loan.status == 'ACCEPTED' ? 'Имитировать подписание' : 'Имитировать выдачу'}"
+          >
+</button>
+</form>
+<div
+          th:if="${loan.status == 'DISBURSED_SIMULATED'}"
+          class="notice notice-success"
+        >
+          Выдача имитирована. Реальное движение средств отсутствует.
+        </div>
+</section>
+</section>
+</body>
+</html>

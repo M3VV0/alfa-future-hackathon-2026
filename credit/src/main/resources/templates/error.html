@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Не удалось открыть страницу · Альфа Бизнес</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/assets/vendor/bootstrap-5.3.3.min.css" />
+<link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body class="error-page">
+<a class="brand" href="/app/applications"
+      >
+<span class="brand-mark">а</span
+      >
+<span>Альфа<span class="brand-sub">Бизнес</span>
+</span>
+</a
+    >
+<main class="error-content">
+<span class="error-number" th:text="${errorStatus}">503</span>
+<h1
+        th:text="${errorStatus == 404 ? 'Здесь пока ничего нет' : (errorStatus == 409 ? 'Данные уже изменились' : 'Не удалось выполнить действие')}"
+      >
+</h1>
+<p th:text="${errorMessage}">
+</p>
+<div class="action-row">
+<a class="button button-primary" href="/app/applications"
+          >В личный кабинет</a
+        >
+<a class="button button-secondary" href="/login">На страницу входа</a>
+</div>
+<small class="muted" th:text="${'Номер обращения: ' + traceId}">
+</small>
+</main>
+</body>
+</html>

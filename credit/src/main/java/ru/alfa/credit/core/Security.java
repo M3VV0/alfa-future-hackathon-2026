@@ -57,6 +57,7 @@ public class Security {
             c ->
                 c.requestMatchers(
                         "/login",
+                        "/assets/**",
                         "/error",
                         "/actuator/health/**",
                         "/v3/api-docs/**",
@@ -66,7 +67,8 @@ public class Security {
                     .permitAll()
                     .anyRequest()
                     .authenticated())
-        .formLogin(c -> c.defaultSuccessUrl("/app/applications", true))
+        .formLogin(
+            c -> c.loginPage("/login").defaultSuccessUrl("/app/applications", true).permitAll())
         .logout(
             c ->
                 c.logoutSuccessUrl("/login?logout")

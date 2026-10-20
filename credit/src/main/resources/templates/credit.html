@@ -1,0 +1,170 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Кредитные продукты', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<div class="page-heading">
+<div>
+<span class="eyebrow">Для вашего следующего шага</span>
+<h1>Деньги на развитие бизнеса</h1>
+<p>
+            Выберите финансирование под вашу задачу. Заявка и документы —
+            онлайн.
+          </p>
+</div>
+</div>
+<div class="catalog-intro">
+<div>
+<span class="mini-label">От потребности до решения</span>
+<h2>Ваши планы.<br />Подходящие возможности.</h2>
+<p>
+            Пополнить запасы, обновить оборудование или запустить новое
+            направление — начните с выбора продукта.
+          </p>
+</div>
+<div class="catalog-art" aria-hidden="true">
+<div class="catalog-chart">
+<span>
+</span>
+<span>
+</span>
+<span>
+</span>
+<span>
+</span>
+<span>
+</span>
+</div>
+<span class="catalog-art-label"
+            >
+<svg th:replace="~{fragments/layout :: icon('trend')}">
+</svg
+            >Двигайте бизнес вперёд</span
+          >
+</div>
+</div>
+<div class="product-grid">
+<article class="surface product-card" th:each="product : ${products}">
+<div class="product-card-top">
+<span
+              class="product-category"
+              th:text="${product.id == 'equipment' ? 'Инвестиции в развитие' : 'Ежедневные задачи бизнеса'}"
+            >
+</span
+            >
+<span
+              class="product-card-icon"
+              th:classappend="${product.id == 'equipment'} ? 'equipment'"
+              >
+<svg
+                th:replace="~{fragments/layout :: icon(${product.id == 'equipment' ? 'business' : 'wallet'})}"
+              >
+</svg
+            >
+</span>
+</div>
+<h2 th:text="${@ui.product(product.id)}">
+</h2>
+<p
+            class="product-description"
+            th:text="${product.id == 'equipment' ? 'На покупку техники и оборудования, чтобы увеличить возможности вашего бизнеса.' : 'На закупку товаров, расчёты с поставщиками и текущие расходы компании.'}"
+          >
+</p>
+<div class="product-limit">
+<span>Сумма до</span
+            >
+<strong th:text="${@ui.money(product.max_minor)}">
+</strong>
+</div>
+<div class="product-conditions">
+<div>
+<span>Ставка</span
+              >
+<strong
+                th:text="${@ui.percent(product.annual_rate) + ' годовых'}"
+              >
+</strong>
+</div>
+<div>
+<span>Срок</span
+              >
+<strong
+                th:text="${product.min_months + '–' + product.max_months + ' мес.'}"
+              >
+</strong>
+</div>
+</div>
+<ul class="check-list">
+<li>
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg
+              >
+<span th:text="${'От ' + @ui.money(product.min_minor)}">
+</span>
+</li>
+<li>
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg
+              >
+<span
+                th:text="${'Для бизнеса от ' + product.min_age_months + ' месяцев'}"
+              >
+</span>
+</li>
+<li>
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg
+              >Заявка без посещения офиса
+            </li>
+</ul>
+<a
+            class="button button-primary"
+            th:href="@{/app/applications/new(productId=${product.id})}"
+            >Оформить заявку<svg
+              th:replace="~{fragments/layout :: icon('arrow')}"
+            >
+</svg
+          >
+</a>
+</article>
+</div>
+<div class="notice notice-neutral">
+<svg th:replace="~{fragments/layout :: icon('info')}">
+</svg>
+<p>
+          Условия продуктов приведены для демонстрации. В текущей версии все
+          рассмотренные заявки получают отказ; реальное кредитование не
+          осуществляется.
+        </p>
+</div>
+<section class="how-it-works">
+<h2>От заявки до решения — три шага</h2>
+<div class="steps-grid">
+<div>
+<span>01</span>
+<h3>Расскажите о задаче</h3>
+<p>
+              Укажите сумму, срок и цель финансирования. Черновик можно
+              сохранить.
+            </p>
+</div>
+<div>
+<span>02</span>
+<h3>Добавьте сведения</h3>
+<p>Заполните финансовые показатели и приложите отчёт по шаблону.</p>
+</div>
+<div>
+<span>03</span>
+<h3>Получите решение</h3>
+<p>
+              Следите за рассмотрением и дополняйте заявку в своём кабинете.
+            </p>
+</div>
+</div>
+</section>
+</section>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Мой бизнес', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<div class="page-heading">
+<div>
+<span class="eyebrow">Всё о вашей компании</span>
+<h1>Мой бизнес</h1>
+<p>
+            Сведения и документы компаний, от имени которых вы можете подавать
+            заявки.
+          </p>
+</div>
+</div>
+<div class="company-grid">
+<a
+          class="surface company-card"
+          th:each="company : ${companies}"
+          th:href="@{/app/companies/{id}(id=${company.id})}"
+          >
+<span class="company-avatar"
+            >
+<svg
+              th:replace="~{fragments/layout :: icon('business')}"
+            >
+</svg>
+</span
+          >
+<span class="status-badge success">Доступ подтверждён</span>
+<h2 th:text="${company.name}">
+</h2>
+<p th:text="${'ИНН ' + company.inn}">
+</p>
+<div class="company-card-bottom">
+<span>Данные и документы</span
+            >
+<svg th:replace="~{fragments/layout :: icon('arrow')}">
+</svg>
+</div
+        >
+</a>
+</div>
+<div class="surface empty-state" th:if="${#lists.isEmpty(companies)}">
+<h2>Нет доступных компаний</h2>
+<p>Для подачи заявки нужны подтверждённые полномочия представителя.</p>
+</div>
+</section>
+</body>
+</html>

@@ -1,55 +1,73 @@
 package ru.alfa.credit.core;
 
-import org.springframework.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 import ru.alfa.credit.platform.*;
 
 @ControllerAdvice(assignableTypes = WebController.class)
 public class WebErrors {
+  private final Ui ui;
+
+  public WebErrors(Ui ui) {
+    this.ui = ui;
+  }
+
   @ExceptionHandler(Problem.class)
-  ResponseEntity<String> problem(Problem e) {
-    return error(e.status, e.code);
+  ModelAndView problem(
+      Problem e, HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res) {
+    return error(e.status, e.code, req, res);
   }
 
   @ExceptionHandler({
     org.springframework.validation.BindException.class,
-    org.springframework.web.method.annotation.HandlerMethodValidationException.class
-  })
-  ResponseEntity<String> invalid(Exception e) {
-    return error(422, "INVALID_FORM");
-  }
-
-  @ExceptionHandler({
+    org.springframework.web.method.annotation.HandlerMethodValidationException.class,
     org.springframework.web.bind.MissingServletRequestParameterException.class,
     org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class
   })
-  ResponseEntity<String> missing(Exception e) {
-    return error(422, "INVALID_FORM");
+  ModelAndView invalid(
+      Exception e, HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res) {
+    return error(422, "INVALID_FORM", req, res);
   }
 
   @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
-  ResponseEntity<String> large(Exception e) {
-    return error(422, "DOCUMENT_SIZE");
+  ModelAndView large(
+      Exception e, HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res) {
+    return error(422, "DOCUMENT_SIZE", req, res);
   }
 
   @ExceptionHandler(Exception.class)
-  ResponseEntity<String> unavailable(Exception e) {
+  ModelAndView unavailable(
+      Exception e, HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res) {
     org.slf4j.LoggerFactory.getLogger(getClass())
         .error("Web request failed type={}", e.getClass().getSimpleName());
-    return error(503, "TEMPORARILY_UNAVAILABLE");
+    return error(503, "TEMPORARILY_UNAVAILABLE", req, res);
   }
 
-  private ResponseEntity<String> error(int status, String code) {
-    return ResponseEntity.status(status)
-        .contentType(MediaType.TEXT_HTML)
-        .header("Cache-Control", "no-store")
-        .body(
-            "<!doctype html><title>"
-                + status
-                + "</title><p>"
-                + code
-                + "</p><p>trace_id: "
-                + TraceFilter.current()
-                + "</p>");
+  private ModelAndView error(
+      int status,
+      String code,
+      HttpServletRequest req,
+      jakarta.servlet.http.HttpServletResponse res) {
+    boolean hx = "true".equalsIgnoreCase(req.getHeader("HX-Request"));
+    if (hx) {
+      res.setHeader("HX-Retarget", "#form-feedback");
+      res.setHeader("HX-Reswap", "innerHTML");
+    }
+    res.setHeader("Cache-Control", "no-store");
+    return new ModelAndView(
+        hx ? "fragments/feedback :: message" : "error",
+        Map.of(
+            "errorStatus",
+            status,
+            "errorMessage",
+            ui.error(code),
+            "errorCode",
+            code,
+            "traceId",
+            TraceFilter.current()),
+        HttpStatusCode.valueOf(status));
   }
 }

@@ -1,10 +1,11 @@
-# Проверка backend-версии — 20.10.2026
+# Проверка кредитного кабинета — 20.10.2026
 
-Проверено на macOS arm64, JDK 21, Maven Wrapper 3.9.9 и Docker Desktop 27.3.1 / Compose 2.29.7.
+Проверено на macOS arm64, JDK 21, Maven Wrapper 3.9.9 и Docker Desktop 27.3.1 / Compose 2.29.7. Базовый backend и его гарантии сохранены.
 
-- `./mvnw verify`: 24 теста, без пропусков. PostgreSQL 17.6 и Garage 2.1.0 — настоящие Testcontainers. Credit и assessment используют ограниченные роли с тем же разделением схем, что и Compose.
-- `docker compose --env-file .env.example up --build -d --wait`: собраны и запущены оба Java-артефакта, API/worker процессы, локальные зависимости и gateway; readiness успешен. Runtime Java 21.0.8.
-- `python3 demo/smoke.py --env-file .env.example --check-restart`: PASS. Настоящие session/CSRF/login, multipart → Garage → download, создание/повтор submit, остановка/возобновление credit-worker, асинхронный assessment и callback, сохранённый REJECTED, NEEDS_INFO → revision 2 → REJECTED, закрытые внутренние маршруты, logout.
-- Экспорт springdoc AssessmentResult сверяется с версионированной OpenAPI-схемой; реальная login-форма и JDBC-сессия проверяются отдельно от тестовой аутентификации.
+- `./mvnw verify`: 28 тестов, без пропусков. PostgreSQL 17.6 и Garage 2.1.0 — настоящие Testcontainers. Credit/assessment используют ограниченные роли с разделением схем, как в Compose.
+- Проверяются все серверные страницы, формы и HTML-фрагменты, точный перевод рублей в копейки, сохранение ошибочного ввода, отдельные command_id форм, права/CSRF и JSON-контракты. Положительный тест рендерит offer/contract; штатный скорер не изменён.
+- `docker compose --env-file .env.example up --build -d --wait`: Java API/workers, Garage, WireMock, PostgreSQL и gateway; readiness успешен.
+- В реальном браузере: вход alice, каталог, новая заявка, сохранение, отправка без отчёта → NEEDS_INFO, выбор доступного отчёта → сохранение → повторная отправка → REJECTED. Статус, верхний badge и этапы обновляются автоматически, история сохраняет обе версии. Проверены мобильное меню, компании и документы. На viewport 530 px нет горизонтального переполнения или повторяющихся DOM id.
+- `demo/smoke.py`: HTTP/session/CSRF/multipart → Garage → download, дубли submit, асинхронный callback, отказ и revision 2, gateway и logout. Техническая проверка результата читает локальную БД, не создаёт публичный API. Ранее также проверен stop/start worker.
 
-Проверка backend-only. Бизнес-страницы возвращают 501, фронтенд не реализован по запросу пользователя. Положительный пользовательский путь невозможен со штатным временным скорером; offer/contract/simulated ledger проверены тестовым assessment. Ресурсная нагрузка, реальный kill JVM (вместо persisted dead heartbeat), backup/restore drill, CustDev, browser E2E и внешнее развёртывание не заявляются как выполненные.
+Штатный скорер всегда отказывает. Техническая задержка отображается отдельно от отказа. Ресурсная нагрузка, backup/restore drill, CustDev и внешнее развёртывание не заявляются выполненными. Отдельного автоматизированного Playwright-suite пока нет: браузерные действия проверены интерактивно, регрессии форм/страниц покрыты Spring MVC integration tests.

@@ -1,0 +1,129 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Профиль', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<div class="page-heading">
+<div>
+<span class="eyebrow">Личный кабинет</span>
+<h1>Ваш профиль</h1>
+<p>Настройки представителя бизнеса.</p>
+</div>
+</div>
+<div class="detail-grid">
+<section
+          id="profile-editor"
+          th:fragment="editor"
+          class="surface form-card"
+        >
+<div class="profile-heading">
+<span
+              class="avatar large"
+              th:text="${#strings.substring(profile.display_name,0,1)}"
+            >
+</span>
+<div>
+<h2 th:text="${profile.display_name}">
+</h2>
+<p>Представитель бизнеса</p>
+</div>
+</div>
+<div
+            class="notice notice-success"
+            th:if="${param.saved != null}"
+            role="status"
+          >
+            Изменения сохранены.
+          </div>
+<div
+            class="notice notice-danger"
+            th:if="${formError != null}"
+            role="alert"
+            th:text="${formError}"
+          >
+</div>
+<form
+            method="post"
+            th:action="@{/app/profile}"
+            hx-post="/app/profile"
+            hx-target="#profile-editor"
+            hx-swap="outerHTML"
+          >
+<input
+              type="hidden"
+              name="version"
+              th:value="${profile.version}"
+            />
+<input
+              type="hidden"
+              name="command_id"
+              th:value="${@ui.command()}"
+            />
+<input type="hidden" name="locale" value="ru" />
+<div class="field">
+<label for="profile-name">Как к вам обращаться</label
+              >
+<input
+                id="profile-name"
+                name="name"
+                th:value="${profile.display_name}"
+                maxlength="200"
+                required
+                autocomplete="name"
+              />
+</div>
+<div class="field">
+<label for="profile-login">Логин</label
+              >
+<input
+                id="profile-login"
+                th:value="${profile.username}"
+                readonly
+                autocomplete="username"
+              />
+<small>Логин используется для входа в кредитный кабинет.</small>
+</div>
+<div class="form-actions">
+<button type="submit" class="button button-primary">
+                Сохранить изменения
+              </button>
+</div>
+</form>
+</section>
+<aside class="application-aside">
+<section class="surface summary-card">
+<span class="mini-label">Ваши полномочия</span>
+<h2>Доступные компании</h2>
+<a
+              class="profile-company"
+              th:each="company : ${companies}"
+              th:href="@{/app/companies/{id}(id=${company.id})}"
+              >
+<svg th:replace="~{fragments/layout :: icon('business')}">
+</svg
+              >
+<span th:text="${company.name}">
+</span
+              >
+<svg th:replace="~{fragments/layout :: icon('chevron')}">
+</svg
+            >
+</a>
+</section>
+<div class="aside-tip">
+<svg th:replace="~{fragments/layout :: icon('lock')}">
+</svg>
+<h3>Личный доступ</h3>
+<p>
+              Не передавайте логин и пароль другим людям. После работы на общем
+              устройстве выйдите из кабинета.
+            </p>
+</div>
+</aside>
+</div>
+</section>
+</body>
+</html>

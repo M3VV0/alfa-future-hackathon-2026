@@ -473,10 +473,12 @@ class CreditIntegrationTest {
         db.queryForObject("select id from core.offer where application_id=?", UUID.class, id);
     long version = version(id);
     UUID accept = UUID.randomUUID();
+    mvc.perform(get("/app/offers/" + offer).with(user("alice"))).andExpect(status().isOk());
     offers.respond(ALICE, offer, version, accept, true);
     offers.respond(ALICE, offer, version, accept, true);
     UUID contract =
         db.queryForObject("select id from core.contract where application_id=?", UUID.class, id);
+    mvc.perform(get("/app/contracts/" + contract).with(user("alice"))).andExpect(status().isOk());
     assertThatThrownBy(() -> offers.contract(BOB, contract)).hasMessage("NOT_FOUND");
     assertThatThrownBy(() -> offers.offer(BOB, offer)).hasMessage("NOT_FOUND");
     offers.simulate(ALICE, contract, version(id), UUID.randomUUID(), false);
@@ -597,11 +599,155 @@ class CreditIntegrationTest {
             .andReturn();
     var session = authenticated.getResponse().getCookie("SESSION");
     assertThat(session).isNotNull();
-    mvc.perform(get("/app/applications").cookie(session)).andExpect(status().isNotImplemented());
+    mvc.perform(get("/app/applications").cookie(session)).andExpect(status().isOk());
     assertThat(
             db.queryForObject(
                 "select count(*) from auth.spring_session where principal_name='alice'",
                 Integer.class))
         .isGreaterThan(0);
+  }
+
+  @Test
+  void browserPagesAndIndependentCommandKeysRender() throws Exception {
+    UUID id = create(true);
+    for (String path :
+        List.of(
+            "/app/credit",
+            "/app/companies",
+            "/app/companies/" + COMPANY_A,
+            "/app/profile",
+            "/app/applications/new?productId=working-capital",
+            "/app/applications/" + id)) {
+      var response =
+          mvc.perform(get(path).with(user("alice"))).andExpect(status().isOk()).andReturn();
+      assertThat(response.getResponse().getContentAsString())
+          .contains("Альфа Бизнес")
+          .doesNotContain("Frontend templates are deferred");
+    }
+    String html =
+        mvc.perform(get("/app/applications/" + id).with(user("alice")))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    var matcher =
+        java.util.regex.Pattern.compile("name=\"command_id\"\\s+value=\"([^\"]+)\"").matcher(html);
+    List<String> keys = new ArrayList<>();
+    while (matcher.find()) keys.add(matcher.group(1));
+    assertThat(keys.size()).isGreaterThanOrEqualTo(4);
+    assertThat(new HashSet<>(keys)).hasSize(keys.size());
+    mvc.perform(get("/assets/app.css")).andExpect(status().isOk());
+  }
+
+  @Test
+  void rubleFormConvertsExactlyAndRetainsInvalidInput() throws Exception {
+    var created =
+        mvc.perform(
+                post("/app/applications")
+                    .with(user("alice"))
+                    .with(csrf())
+                    .param("companyId", COMPANY_A.toString())
+                    .param("productId", "working-capital")
+                    .param("command_id", UUID.randomUUID().toString())
+                    .param("amountRubles", "1 000 000,50")
+                    .param("termMonths", "12")
+                    .param("purpose", "Сохранённая цель")
+                    .param("revenueRubles", "1 000 000")
+                    .param("expensesRubles", "600000,25")
+                    .param("debtRubles", "0")
+                    .param("period", "2026-09"))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    UUID id =
+        UUID.fromString(
+            created.getResponse().getHeader("Location").substring("/app/applications/".length()));
+    JsonNode saved = (JsonNode) apps.detail(ALICE, id).get("draft");
+    assertThat(saved.path("amountMinor").asLong()).isEqualTo(100000050L);
+    assertThat(saved.path("expensesMinor").asLong()).isEqualTo(60000025L);
+    var invalid =
+        mvc.perform(
+                post("/app/applications/" + id)
+                    .with(user("alice"))
+                    .with(csrf())
+                    .header("HX-Request", "true")
+                    .param("version", Long.toString(version(id)))
+                    .param("command_id", UUID.randomUUID().toString())
+                    .param("amountRubles", "-50")
+                    .param("termMonths", "12")
+                    .param("purpose", "Мой исправляемый текст"))
+            .andExpect(status().isUnprocessableEntity())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(invalid)
+        .contains("Мой исправляемый текст")
+        .contains("value=\"-50\"")
+        .contains("field-error")
+        .doesNotContain("<html");
+    assertThat(((JsonNode) apps.detail(ALICE, id).get("draft")).path("amountMinor").asLong())
+        .isEqualTo(100000050L);
+  }
+
+  @Test
+  void statusFragmentsPollOnlyWhileProcessingAndExplainMissingInformation() throws Exception {
+    UUID id = create(false);
+    apps.submit(ALICE, id, version(id), UUID.randomUUID(), false);
+    String processing =
+        mvc.perform(
+                get("/app/applications/" + id + "/status")
+                    .with(user("alice"))
+                    .header("HX-Request", "true"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(processing).contains("every 3s").doesNotContain("<html");
+    run(id, "VALIDATE");
+    String missing =
+        mvc.perform(get("/app/applications/" + id + "/status").with(user("alice")))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(missing).contains("Приложите финансовый отчёт").doesNotContain("every 3s");
+  }
+
+  @Test
+  void documentUploadFragmentAndSavedReportUseAuthorizedApplication() throws Exception {
+    UUID id = create(false);
+    var report =
+        mvc.perform(get("/app/applications/" + id + "/report-template").with(user("alice")))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertThat(report.getResponse().getHeader("Content-Disposition")).contains("attachment");
+    JsonNode data = json.read(report.getResponse().getContentAsString());
+    assertThat(data.path("inn").asText()).isEqualTo("9900000017");
+    var file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "file",
+            "report.json",
+            "application/json",
+            report.getResponse().getContentAsByteArray());
+    String fragment =
+        mvc.perform(
+                multipart("/app/documents")
+                    .file(file)
+                    .with(user("alice"))
+                    .with(csrf())
+                    .header("HX-Request", "true")
+                    .header("HX-Target", "documents-panel")
+                    .param("companyId", COMPANY_A.toString())
+                    .param("applicationId", id.toString())
+                    .param("kind", "FINANCIAL_REPORT")
+                    .param("command_id", UUID.randomUUID().toString()))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(fragment)
+        .contains("Файл загружен")
+        .contains("checked=\"checked\"")
+        .doesNotContain("<html");
+    mvc.perform(get("/app/applications/" + id + "/report-template").with(user("bob")))
+        .andExpect(status().isNotFound());
   }
 }

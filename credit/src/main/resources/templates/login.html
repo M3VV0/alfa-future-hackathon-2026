@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Вход · Альфа Бизнес</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/assets/vendor/bootstrap-5.3.3.min.css" />
+<link rel="stylesheet" href="/assets/app.css" />
+<script src="/assets/app.js" defer>
+</script>
+</head>
+<body class="login-page">
+<section class="login-story" aria-label="Кредитный кабинет">
+<a class="brand brand-light" href="/login"
+        >
+<span class="brand-mark">а</span
+        >
+<span>Альфа<span class="brand-sub">Бизнес</span>
+</span>
+</a
+      >
+<div class="login-story-content">
+<span class="eyebrow light">Для тех, кто делает дело</span>
+<h1>Ваш бизнес.<br />Ваш следующий<br />
+<span>большой шаг.</span>
+</h1>
+<p>
+          От идеи до заявки на финансирование —<br />в одном кредитном кабинете.
+        </p>
+<div class="story-benefits">
+<span
+            >
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg>Два
+            кредитных продукта</span
+          >
+<span
+            >
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg
+            >Понятные этапы рассмотрения</span
+          >
+<span
+            >
+<svg th:replace="~{fragments/layout :: icon('check')}">
+</svg
+            >Документы всегда под рукой</span
+          >
+</div>
+</div>
+<div class="login-art" aria-hidden="true">
+<span class="art-ring ring-one">
+</span
+        >
+<span class="art-ring ring-two">
+</span
+        >
+<span class="art-bar bar-one">
+</span
+        >
+<span class="art-bar bar-two">
+</span
+        >
+<span class="art-bar bar-three">
+</span>
+</div>
+<span class="login-story-footer">Кредитный кабинет предпринимателя</span>
+</section>
+<main class="login-main">
+<div class="login-mobile-brand">
+<span class="brand-mark">а</span>
+<strong>Альфа Бизнес</strong>
+</div>
+<div class="login-form-wrap">
+<span class="eyebrow">Рады видеть вас снова</span>
+<h2>Войти в кабинет</h2>
+<p class="lead-small">
+          Управляйте заявками и финансированием<br class="desktop-only" />
+          вашего бизнеса в одном месте.
+        </p>
+<div
+          class="notice notice-danger"
+          role="alert"
+          th:if="${param.error != null}"
+        >
+          Неверный логин или пароль. Проверьте данные и попробуйте снова.
+        </div>
+<div
+          class="notice notice-success"
+          role="status"
+          th:if="${param.logout != null}"
+        >
+          Вы вышли из кабинета.
+        </div>
+<form method="post" th:action="@{/login}" class="login-form">
+<div class="field">
+<label for="username">Логин</label
+            >
+<input
+              id="username"
+              name="username"
+              autocomplete="username"
+              placeholder="Введите логин"
+              required
+              autofocus
+              maxlength="100"
+            />
+</div>
+<div class="field">
+<label for="password">Пароль</label>
+<div class="password-field">
+<input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Введите пароль"
+                required
+              />
+<button
+                class="password-toggle"
+                type="button"
+                aria-controls="password"
+                aria-label="Показать пароль"
+              >
+<svg th:replace="~{fragments/layout :: icon('eye')}">
+</svg>
+</button>
+</div>
+</div>
+<button class="button button-primary button-full" type="submit">
+            Войти<svg th:replace="~{fragments/layout :: icon('arrow')}">
+</svg>
+</button>
+</form>
+<div class="login-security">
+<svg th:replace="~{fragments/layout :: icon('lock')}">
+</svg
+          >
+<span>Защищённый вход в личный кабинет</span>
+</div>
+</div>
+<div class="login-bottom">
+<span class="demo-pill">
+<span>
+</span>Демонстрационная среда</span>
+<p>Все сведения и операции в этом кабинете — синтетические.</p>
+</div>
+</main>
+</body>
+</html>

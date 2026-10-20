@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backend-only end-to-end check: real web commands, S3, workers and callback."""
+"""Web cabinet end-to-end check: real web commands, S3, workers and callback."""
 import argparse
 from http.cookiejar import CookieJar
 import json
@@ -134,7 +134,7 @@ def main():
     assert sql(f"select count(*) from core.application_revision where application_id='{incomplete}'") == "2"
     for path in ["/internal/processed", "/request", "/actuator/health"]:
         assert http(path)[0] == 404, ("gateway boundary", path)
-    assert http(f"/app/applications/{app}")[0] == 501
+    assert http(f"/app/applications/{app}")[0] == 200
     assert http("/openapi/internal.yaml")[0] == 200
     code, _, _ = form("/logout", {"_csrf": token})
     assert code == 302

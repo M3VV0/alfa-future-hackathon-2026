@@ -1,0 +1,126 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Новая заявка', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<a class="back-link" href="/app/credit"
+        >
+<svg th:replace="~{fragments/layout :: icon('arrow-left')}">
+</svg>К
+        кредитным продуктам</a
+      >
+<div class="page-heading">
+<div>
+<span class="eyebrow">Начнём с ваших планов</span>
+<h1>Новая заявка</h1>
+<p>
+            Сохраните параметры — на следующем шаге можно приложить документы.
+          </p>
+</div>
+<span class="status-badge neutral">Черновик</span>
+</div>
+<div class="detail-grid">
+<div id="draft-editor" th:fragment="editor">
+<form
+            id="draft-form"
+            method="post"
+            th:action="@{/app/applications}"
+            hx-post="/app/applications"
+            hx-target="#draft-editor"
+            hx-swap="outerHTML"
+            th:object="${form}"
+            class="editor-form"
+          >
+<input
+              type="hidden"
+              name="command_id"
+              th:value="${@ui.command()}"
+            />
+<input
+              type="hidden"
+              name="productId"
+              th:value="${product.id}"
+            />
+<input type="hidden" name="companyId" th:value="${company.id}" />
+<section class="surface selected-business">
+<span class="product-symbol"
+                >
+<svg th:replace="~{fragments/layout :: icon('business')}">
+</svg
+              >
+</span>
+<div>
+<span class="mini-label">Заявка от компании</span
+                >
+<strong th:text="${company.name}">
+</strong
+                >
+<small th:text="${'ИНН ' + company.inn}">
+</small>
+</div>
+<a
+                th:if="${#lists.size(companies) > 1}"
+                href="/app/companies"
+                class="text-link"
+                >Изменить</a
+              >
+</section>
+<section th:replace="~{fragments/loan-form :: fields}">
+</section>
+<div class="form-actions">
+<a href="/app/credit" class="button button-secondary">Назад</a
+              >
+<button type="submit" class="button button-primary">
+                Сохранить и продолжить<svg
+                  th:replace="~{fragments/layout :: icon('arrow')}"
+                >
+</svg>
+</button>
+</div>
+</form>
+</div>
+<aside class="application-aside">
+<section class="surface summary-card">
+<span class="product-category">Выбранный продукт</span>
+<h2 th:text="${@ui.product(product.id)}">
+</h2>
+<dl class="summary-list">
+<div>
+<dt>Сумма до</dt>
+<dd th:text="${@ui.money(product.max_minor)}">
+</dd>
+</div>
+<div>
+<dt>Ставка</dt>
+<dd
+                  th:text="${@ui.percent(product.annual_rate) + ' годовых'}"
+                >
+</dd>
+</div>
+<div>
+<dt>Срок</dt>
+<dd
+                  th:text="${product.min_months + '–' + product.max_months + ' мес.'}"
+                >
+</dd>
+</div>
+</dl>
+<a class="text-link" href="/app/credit">Выбрать другой продукт</a>
+</section>
+<div class="aside-tip">
+<svg th:replace="~{fragments/layout :: icon('shield')}">
+</svg>
+<h3>Всё под вашим контролем</h3>
+<p>
+              Сохранение черновика ещё не отправляет заявку на рассмотрение.
+              Перед отправкой вы сможете проверить все данные.
+            </p>
+</div>
+</aside>
+</div>
+</section>
+</body>
+</html>

@@ -20,8 +20,18 @@
 | Принять предложение → подписать → выдать (имитация), повтор не дублирует ledger | CreditIntegrationTest.offersAndSimulationsAreIdempotentWithAlternateTestAssessment |
 | Сигнатура/имя файла, checksum скачивания; профиль с version | CreditIntegrationTest.filesValidateSignaturesAndChecksums / profileUpdatesAreVersionedAndDoNotRewriteSnapshot |
 
-Тест восстановления воспроизводит persisted claimed state после аварийной остановки; реальное убийство JVM дополнительно проверяется на Compose остановкой worker. Сквозной smoke использует реальные workers и сеть. Интерфейс/Playwright тесты отложены вместе с фронтендом. CustDev и ресурсные нагрузки отдельно не проводились.
+Тест восстановления воспроизводит persisted claimed state после аварийной остановки; реальное убийство JVM дополнительно проверяется на Compose остановкой worker. Сквозной smoke использует реальные workers и сеть. Интерфейс проверен рендерингом всех страниц/фрагментов и реальными браузерными действиями. CustDev и ресурсные нагрузки отдельно не проводились.
 
 Сценарии A/D/E/F целевой архитектуры с будущим скорером пока заканчиваются отказом заглушки. Сценарий B может отклоняться самостоятельным стоп-фактором просрочки. Сценарий C сначала запрашивает сведения, после дополнения получает отказ. Ожидаемые одобрения исходной спецификации не относятся к этой временной версии; это зафиксировано ADR-0003.
 
 Дополнительно: CreditIntegrationTest.realLoginUsesCsrfAndJdbcSession проверяет реальную встроенную форму, redirect и JDBC cookie session; exportedCallbackSchemaMatchesVersionedContract сверяет свойства экспортированной DTO со статической OpenAPI. Выполненная проверка и её границы: [verification.md](verification.md).
+
+## Проверки веб-интерфейса
+
+- `browserPagesAndIndependentCommandKeysRender`: все основные страницы, локальные assets и отдельные command_id каждой формы.
+- `rubleFormConvertsExactlyAndRetainsInvalidInput`: рубли с разделителями/копейками, 422, сохранение текста и отсутствие изменения БД при ошибке.
+- `statusFragmentsPollOnlyWhileProcessingAndExplainMissingInformation`: polling 3 секунды, остановка на NEEDS_INFO и адресная подсказка.
+- `documentUploadFragmentAndSavedReportUseAuthorizedApplication`: отчёт из сохранённых финансов, HTML-панель загрузки, выбранный файл и запрет чужого доступа.
+- Положительный доменный тест дополнительно рендерит offer и contract без изменения штатного скорера.
+
+Ручной браузерный сценарий и воспроизводимые шаги: `demo/walkthrough.md`. Все приложения продолжают использовать единственный web transport.

@@ -75,7 +75,7 @@ logging:
 springdoc:
   swagger-ui:
     urls:
-      - name: Web (frontend deferred)
+      - name: Web cabinet
         url: /openapi/web.yaml
       - name: Internal
         url: /openapi/internal.yaml

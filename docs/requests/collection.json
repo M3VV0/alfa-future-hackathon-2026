@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Credit backend web-only smoke",
+    "name": "Credit web cabinet smoke",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Использует cookie jar, реальные формы/CSRF и единственные web-маршруты. Укажите password из DEMO_PASSWORD и рабочий каталог репозитория для отчёта. GET статуса пока 501; полный результат автоматически проверяет demo/smoke.py через локальную БД."
+    "description": "Реальные web-формы, сессия и CSRF. Для полного визуального сценария откройте /login. Пароль задаётся DEMO_PASSWORD, рабочий каталог — репозиторий."
   },
   "variable": [
     {
@@ -319,7 +319,7 @@
       ]
     },
     {
-      "name": "7 Status transport (501 until frontend)",
+      "name": "7 Status HTML fragment",
       "protocolProfileBehavior": {
         "followRedirects": false
       },
@@ -334,7 +334,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Frontend deferred\", () => pm.response.to.have.status(501));"
+              "pm.test(\"Status available\", () => pm.response.to.have.status(200));",
+              "pm.test(\"HTML status\", () => pm.expect(pm.response.text()).to.include(\"application-status\"));"
             ]
           }
         }

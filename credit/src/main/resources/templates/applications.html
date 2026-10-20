@@ -1,0 +1,218 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: page('Мои заявки', ~{::content})}"
+>
+<body>
+<section th:fragment="content" class="page-content">
+<div class="page-heading">
+<div>
+<span class="eyebrow">Ваше финансирование</span>
+<h1>Мои заявки</h1>
+<p>Всё о заявках вашего бизнеса — от черновика до решения.</p>
+</div>
+<a class="button button-primary" href="/app/credit"
+          >
+<svg th:replace="~{fragments/layout :: icon('plus')}">
+</svg>Новая
+          заявка</a
+        >
+</div>
+<div class="stats-grid">
+<div class="stat-card">
+<span class="stat-label">Всего заявок</span>
+<div>
+<strong th:text="${totalCount}">0</strong
+            >
+<span class="stat-icon"
+              >
+<svg th:replace="~{fragments/layout :: icon('document')}">
+</svg
+            >
+</span>
+</div>
+</div>
+<div class="stat-card">
+<span class="stat-label">В работе</span>
+<div>
+<strong th:text="${activeCount}">0</strong
+            >
+<span class="stat-icon icon-blue"
+              >
+<svg th:replace="~{fragments/layout :: icon('clock')}">
+</svg
+            >
+</span>
+</div>
+</div>
+<div class="stat-card">
+<span class="stat-label">Черновики</span>
+<div>
+<strong th:text="${draftCount}">0</strong
+            >
+<span class="stat-icon icon-amber"
+              >
+<svg th:replace="~{fragments/layout :: icon('edit')}">
+</svg
+            >
+</span>
+</div>
+</div>
+</div>
+<section class="surface applications-surface" aria-label="Список заявок">
+<div class="list-toolbar">
+<nav class="filter-tabs" aria-label="Фильтр заявок">
+<a
+              th:href="@{/app/applications(filter='all',q=${query})}"
+              th:classappend="${filter == 'all'} ? 'selected'"
+              >Все заявки</a
+            >
+<a
+              th:href="@{/app/applications(filter='active',q=${query})}"
+              th:classappend="${filter == 'active'} ? 'selected'"
+              >В работе</a
+            >
+<a
+              th:href="@{/app/applications(filter='drafts',q=${query})}"
+              th:classappend="${filter == 'drafts'} ? 'selected'"
+              >Черновики</a
+            >
+<a
+              th:href="@{/app/applications(filter='completed',q=${query})}"
+              th:classappend="${filter == 'completed'} ? 'selected'"
+              >Завершённые</a
+            >
+</nav>
+<form class="search-form" method="get" action="/app/applications">
+<input type="hidden" name="filter" th:value="${filter}" />
+<svg
+              th:replace="~{fragments/layout :: icon('search')}"
+            >
+</svg
+            >
+<input
+              name="q"
+              th:value="${query}"
+              aria-label="Поиск по номеру, продукту или цели"
+              placeholder="Найти заявку"
+              maxlength="100"
+            />
+<button type="submit" class="sr-only">Найти</button>
+</form>
+</div>
+<div class="empty-state" th:if="${#lists.isEmpty(applications)}">
+<span class="empty-icon"
+            >
+<svg th:replace="~{fragments/layout :: icon('document')}">
+</svg
+          >
+</span>
+<h2
+            th:text="${totalCount == 0 ? 'Начнём с вашей первой заявки' : 'Здесь пока нет заявок'}"
+          >
+            Начнём с вашей первой заявки
+          </h2>
+<p
+            th:text="${totalCount == 0 ? 'Выберите кредитный продукт под задачи бизнеса. Мы сохраним данные и покажем каждый этап рассмотрения.' : 'Попробуйте другой фильтр или измените поисковый запрос.'}"
+          >
+</p>
+<a
+            class="button button-primary"
+            th:href="${totalCount == 0 ? '/app/credit' : '/app/applications'}"
+            th:text="${totalCount == 0 ? 'Подобрать финансирование' : 'Показать все заявки'}"
+          >
+</a>
+</div>
+<div
+          class="application-table"
+          th:unless="${#lists.isEmpty(applications)}"
+        >
+<div class="application-table-head">
+<span>Заявка и продукт</span>
+<span>Сумма и срок</span
+            >
+<span>Статус</span>
+<span>Создана</span>
+<span>
+</span>
+</div>
+<a
+            class="application-row"
+            th:each="item : ${applications}"
+            th:href="@{/app/applications/{id}(id=${item.id})}"
+            >
+<div class="application-product">
+<span class="product-symbol"
+                >
+<svg th:replace="~{fragments/layout :: icon('wallet')}">
+</svg
+              >
+</span>
+<div>
+<strong th:text="${@ui.product(item.product_id)}"
+                  >На оборотные средства</strong
+                >
+<small th:text="${'№ ' + @ui.shortId(item.id)}">
+</small>
+</div>
+</div>
+<div class="row-amount">
+<strong
+                th:text="${@ui.money(@ui.field(item.draft,'amountMinor'))}"
+              >
+</strong
+              >
+<small
+                th:text="${@ui.field(item.draft,'termMonths') + ' мес.'}"
+              >
+</small>
+</div>
+<div>
+<span
+                class="status-badge"
+                th:classappend="${@ui.tone(item.status)}"
+                th:text="${@ui.status(item.status)}"
+              >
+</span
+              >
+<small
+                class="row-technical"
+                th:if="${item.processing_state == 'FAILED'}"
+                >Техническая задержка</small
+              >
+</div>
+<span class="row-date" th:text="${@ui.date(item.created_at)}">
+</span
+            >
+<svg th:replace="~{fragments/layout :: icon('chevron')}">
+</svg
+          >
+</a>
+</div>
+</section>
+<div class="quiet-banner">
+<span class="banner-icon"
+          >
+<svg th:replace="~{fragments/layout :: icon('business')}">
+</svg
+        >
+</span>
+<div>
+<h2>Финансирование под задачи бизнеса</h2>
+<p>
+            Оборотные средства или новое оборудование — выберите свой следующий
+            шаг.
+          </p>
+</div>
+<a class="text-link" href="/app/credit"
+          >Посмотреть продукты<svg
+            th:replace="~{fragments/layout :: icon('arrow')}"
+          >
+</svg
+        >
+</a>
+</div>
+</section>
+</body>
+</html>

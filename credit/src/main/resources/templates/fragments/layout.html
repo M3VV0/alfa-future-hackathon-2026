@@ -1,0 +1,184 @@
+<!doctype html>
+<html
+  lang="ru"
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="page(title, content)"
+>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="_csrf" th:content="${_csrf.token}" />
+<meta name="_csrf_header" th:content="${_csrf.headerName}" />
+<meta
+      name="htmx-config"
+      content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"historyCacheSize":0,"selfRequestsOnly":true}'
+    />
+<title th:text="${title} + ' · Альфа Бизнес'">Альфа Бизнес</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/assets/vendor/bootstrap-5.3.3.min.css" />
+<link rel="stylesheet" href="/assets/app.css" />
+<script src="/assets/vendor/htmx-2.0.4.min.js" defer>
+</script>
+<script src="/assets/app.js" defer>
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">К содержимому</a>
+<button
+      class="nav-scrim"
+      type="button"
+      aria-label="Закрыть меню"
+      hidden
+    >
+</button>
+<aside class="sidebar" id="sidebar" aria-label="Основная навигация">
+<a
+        class="brand"
+        href="/app/applications"
+        aria-label="Альфа Бизнес — главная"
+        >
+<span class="brand-mark">а</span
+        >
+<span>Альфа<span class="brand-sub">Бизнес</span>
+</span>
+</a
+      >
+<div class="sidebar-label">Кредитный кабинет</div>
+<nav class="main-nav">
+<a
+          href="/app/applications"
+          th:classappend="${nav == 'applications'} ? 'active'"
+          th:attr="aria-current=${nav == 'applications' ? 'page' : null}"
+          >
+<svg th:replace="~{fragments/layout :: icon('grid')}">
+</svg>Мои
+          заявки</a
+        >
+<a
+          href="/app/credit"
+          th:classappend="${nav == 'credit'} ? 'active'"
+          th:attr="aria-current=${nav == 'credit' ? 'page' : null}"
+          >
+<svg th:replace="~{fragments/layout :: icon('wallet')}">
+</svg
+          >Кредитные продукты</a
+        >
+<a
+          href="/app/companies"
+          th:classappend="${nav == 'companies'} ? 'active'"
+          th:attr="aria-current=${nav == 'companies' ? 'page' : null}"
+          >
+<svg th:replace="~{fragments/layout :: icon('business')}">
+</svg>Мой
+          бизнес</a
+        >
+<a
+          href="/app/profile"
+          th:classappend="${nav == 'profile'} ? 'active'"
+          th:attr="aria-current=${nav == 'profile' ? 'page' : null}"
+          >
+<svg th:replace="~{fragments/layout :: icon('user')}">
+</svg
+          >Профиль</a
+        >
+</nav>
+<div class="sidebar-bottom">
+<div class="side-note">
+<svg th:replace="~{fragments/layout :: icon('shield')}">
+</svg
+          >
+<span>Ваши данные доступны только представителям компании</span>
+</div>
+<a class="account-link" href="/app/profile"
+          >
+<span
+            class="avatar"
+            th:text="${currentUser != null ? #strings.substring(currentUser.display_name, 0, 1) : 'П'}"
+            >П</span
+          >
+<span class="account-text"
+            >
+<strong
+              th:text="${currentUser != null ? currentUser.display_name : 'Личный кабинет'}"
+              >Представитель</strong
+            >
+<small>Представитель бизнеса</small>
+</span
+          >
+</a
+        >
+<form method="post" th:action="@{/logout}">
+<button class="logout-button" type="submit">
+<svg th:replace="~{fragments/layout :: icon('logout')}">
+</svg>Выйти
+            из кабинета
+          </button>
+</form>
+</div>
+</aside>
+<div class="workspace">
+<header class="topbar">
+<div class="topbar-left">
+<button
+            class="menu-button icon-button"
+            type="button"
+            aria-controls="sidebar"
+            aria-expanded="false"
+            aria-label="Открыть меню"
+          >
+<svg th:replace="~{fragments/layout :: icon('menu')}">
+</svg>
+</button
+          >
+<span class="breadcrumb-label">Бизнесу</span
+          >
+<span class="breadcrumb-separator">/</span
+          >
+<strong>Финансирование</strong>
+</div>
+<span class="demo-pill">
+<span>
+</span>Демонстрационная среда</span>
+</header>
+<noscript
+        >
+<nav class="fallback-nav" aria-label="Навигация без JavaScript">
+<a href="/app/applications">Мои заявки</a
+          >
+<a href="/app/credit">Кредитные продукты</a
+          >
+<a href="/app/companies">Мой бизнес</a
+          >
+<a href="/app/profile">Профиль</a>
+</nav>
+</noscript
+      >
+<main id="main-content" tabindex="-1">
+<div
+          id="form-feedback"
+          class="global-feedback"
+          aria-live="assertive"
+        >
+</div>
+<th:block th:replace="${content}">
+</th:block>
+</main>
+<footer class="workspace-footer">
+<span>Альфа Бизнес · Кредитный кабинет</span
+        >
+<span>Синтетические данные. Без реальных денежных операций.</span>
+</footer>
+</div>
+</body>
+</html>
+<svg
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="icon(name)"
+  class="icon"
+  aria-hidden="true"
+  focusable="false"
+>
+<use th:href="${'/assets/icons.svg#' + name}">
+</use>
+</svg>

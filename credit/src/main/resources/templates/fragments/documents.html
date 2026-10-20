@@ -1,0 +1,176 @@
+<section
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="panel"
+  id="documents-panel"
+  class="surface form-card documents-card"
+>
+<div class="section-heading">
+<span class="section-number"
+      >
+<svg th:replace="~{fragments/layout :: icon('paperclip')}">
+</svg
+    >
+</span>
+<div>
+<h2>Документы</h2>
+<p
+        th:text="${uploadApplicationId != null ? 'Отметьте файлы, которые нужно приложить к заявке' : 'Файлы компании в одном месте'}"
+      >
+</p>
+</div>
+</div>
+<div class="notice notice-success" role="status" th:if="${uploaded == true}">
+<p
+      th:text="${uploadApplicationId != null ? 'Файл загружен. Сохраните заявку, чтобы закрепить выбор документов.' : 'Документ успешно загружен.'}"
+    >
+</p>
+</div>
+<div class="notice notice-danger" role="alert" th:if="${uploadError != null}">
+<p th:text="${uploadError}">
+</p>
+</div>
+<div class="document-list">
+<div
+      class="document-item"
+      th:each="doc : ${company.documents}"
+      th:id="${'document-' + doc.id}"
+    >
+<label class="document-choice"
+        >
+<input
+          th:if="${uploadApplicationId != null}"
+          type="checkbox"
+          name="documentIds"
+          form="draft-form"
+          th:value="${doc.id}"
+          th:checked="${documentIds != null and documentIds.contains(doc.id)}" />
+<span
+          class="file-icon"
+          >
+<svg
+            th:replace="~{fragments/layout :: icon('document')}"
+          >
+</svg>
+</span
+        >
+<span class="document-meta"
+          >
+<strong th:text="${doc.filename}">
+</strong
+          >
+<small
+            >
+<span
+              th:text="${doc.kind == 'FINANCIAL_REPORT' ? 'Финансовый отчёт' : 'Дополнительный документ'}"
+            >
+</span>
+            ·
+            <span
+              th:text="${doc.size < 1024 ? doc.size + ' Б' : (doc.size / 1024 + 1) + ' КБ'}"
+            >
+</span>
+</small>
+</span>
+</label
+      >
+<a
+        class="icon-button"
+        th:href="@{/app/documents/{id}/content(id=${doc.id})}"
+        th:attr="aria-label=${'Скачать ' + doc.filename}"
+        >
+<svg th:replace="~{fragments/layout :: icon('download')}">
+</svg
+      >
+</a>
+</div>
+<div class="documents-empty" th:if="${#lists.isEmpty(company.documents)}">
+<svg th:replace="~{fragments/layout :: icon('document')}">
+</svg
+      >
+<span>Документов пока нет. Добавьте первый файл.</span>
+</div>
+</div>
+<details
+    class="upload-details"
+    th:open="${#lists.isEmpty(company.documents) or uploadError != null}"
+  >
+<summary>
+<svg th:replace="~{fragments/layout :: icon('plus')}">
+</svg>Загрузить
+      документ
+    </summary>
+<form
+      method="post"
+      enctype="multipart/form-data"
+      th:action="@{/app/documents}"
+      hx-post="/app/documents"
+      hx-encoding="multipart/form-data"
+      hx-target="#documents-panel"
+      hx-swap="outerHTML"
+      hx-include="#documents-panel input[name='documentIds']"
+      class="upload-form"
+    >
+<input
+        type="hidden"
+        name="command_id"
+        th:value="${@ui.command()}"
+      />
+<input type="hidden" name="companyId" th:value="${company.id}" />
+<input
+        th:if="${uploadApplicationId != null}"
+        type="hidden"
+        name="applicationId"
+        th:value="${uploadApplicationId}"
+      />
+<div class="field">
+<label th:for="${'document-kind-' + company.id}">Тип документа</label
+        >
+<select th:id="${'document-kind-' + company.id}" name="kind">
+<option value="FINANCIAL_REPORT">Финансовый отчёт · JSON</option>
+<option value="OTHER">Дополнительный документ · PDF или JSON</option>
+</select>
+</div>
+<div class="field">
+<label th:for="${'document-file-' + company.id}">Файл до 10 МБ</label
+        >
+<input
+          class="file-input"
+          th:id="${'document-file-' + company.id}"
+          type="file"
+          name="file"
+          required
+          accept=".json,.pdf,application/json,application/pdf"
+        />
+<small
+          >Финансовый отчёт должен соответствовать сохранённым данным
+          заявки.</small
+        >
+</div>
+<button type="submit" class="button button-secondary">
+<svg th:replace="~{fragments/layout :: icon('upload')}">
+</svg>Загрузить
+        файл
+      </button>
+</form>
+</details>
+<div class="template-download" th:if="${uploadApplicationId != null}">
+<svg th:replace="~{fragments/layout :: icon('info')}">
+</svg>
+<div>
+<strong>Нужен отчёт для демонстрации?</strong>
+<p>
+        Сохраните финансовые показатели заявки, скачайте готовый шаблон и
+        загрузите его как финансовый отчёт.
+      </p>
+<a
+        class="text-link"
+        th:href="@{/app/applications/{id}/report-template(id=${uploadApplicationId})}"
+        >Скачать шаблон по данным заявки<svg
+          th:replace="~{fragments/layout :: icon('download')}"
+        >
+</svg
+      >
+</a>
+</div>
+</div>
+</section>

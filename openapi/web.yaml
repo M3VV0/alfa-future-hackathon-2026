@@ -3,7 +3,7 @@
   "info": {
     "title": "Credit web transport",
     "version": "0.1.0",
-    "description": "Единственный клиентский HTTP-контракт (ADR-0002). UI отложен: GET бизнес-страниц возвращает 501, MVC-модели и команды реализованы. Нет публичного JSON API."
+    "description": "Единственный клиентский HTTP-контракт (ADR-0002). Thymeleaf + HTMX + Bootstrap, server session/CSRF, формы и HTML-фрагменты. Клиентского JSON API нет."
   },
   "servers": [
     {
@@ -52,8 +52,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -61,9 +61,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         },
         "security": []
@@ -289,8 +286,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -298,9 +295,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       },
@@ -445,8 +439,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -454,9 +448,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -506,8 +497,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -515,9 +506,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       },
@@ -673,8 +661,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -682,9 +670,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -733,8 +718,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -742,9 +727,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -785,8 +767,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -794,9 +776,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       },
@@ -933,6 +912,22 @@
                       "format": "uuid"
                     },
                     "maxItems": 20
+                  },
+                  "amountRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю amountMinor."
+                  },
+                  "revenueRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю revenueMinor."
+                  },
+                  "expensesRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю expensesMinor."
+                  },
+                  "debtRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю debtMinor."
                   }
                 },
                 "required": [
@@ -940,9 +935,20 @@
                   "command_id",
                   "companyId",
                   "productId",
-                  "amountMinor",
                   "termMonths",
                   "purpose"
+                ],
+                "anyOf": [
+                  {
+                    "required": [
+                      "amountMinor"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amountRubles"
+                    ]
+                  }
                 ]
               }
             }
@@ -995,8 +1001,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -1004,9 +1010,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       },
@@ -1145,15 +1148,42 @@
                       "format": "uuid"
                     },
                     "maxItems": 20
+                  },
+                  "amountRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю amountMinor."
+                  },
+                  "revenueRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю revenueMinor."
+                  },
+                  "expensesRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю expensesMinor."
+                  },
+                  "debtRubles": {
+                    "type": "string",
+                    "description": "Сумма в рублях из экранной формы: пробелы в разрядах и запятая/точка допустимы, до двух десятичных знаков. Альтернатива полю debtMinor."
                   }
                 },
                 "required": [
                   "_csrf",
                   "command_id",
                   "version",
-                  "amountMinor",
                   "termMonths",
                   "purpose"
+                ],
+                "anyOf": [
+                  {
+                    "required": [
+                      "amountMinor"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amountRubles"
+                    ]
+                  }
                 ]
               }
             }
@@ -1206,8 +1236,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -1215,9 +1245,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -1267,8 +1294,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -1276,9 +1303,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -1328,8 +1352,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -1337,9 +1361,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -1389,8 +1410,8 @@
           "503": {
             "description": "Временная техническая ошибка, text/html + X-Trace-Id"
           },
-          "501": {
-            "description": "Frontend отложен; данные уже загружены в MVC model",
+          "200": {
+            "description": "HTML-страница либо HTMX-фрагмент; для приватных страниц Cache-Control: no-store",
             "content": {
               "text/html": {
                 "schema": {
@@ -1398,9 +1419,6 @@
                 }
               }
             }
-          },
-          "200": {
-            "description": "Содержимое файла или системная страница"
           }
         }
       }
@@ -1772,7 +1790,7 @@
             }
           },
           "200": {
-            "description": "HTMX: навигация всего окна",
+            "description": "HTMX с HX-Target: documents-panel получает HTML обновлённого списка. Иначе — HX-Redirect.",
             "headers": {
               "HX-Redirect": {
                 "schema": {
@@ -1810,6 +1828,19 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "applicationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Опциональная принадлежащая пользователю заявка; companyId обязан совпадать."
+                  },
+                  "documentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "description": "Сохранить текущий выбор checkbox при обновлении списка документов."
                   }
                 },
                 "required": [
@@ -2302,6 +2333,75 @@
                 ]
               }
             }
+          }
+        }
+      }
+    },
+    "/app/applications/new": {
+      "get": {
+        "summary": "Форма новой заявки с продуктом и сохранёнными финансовыми показателями компании",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "working-capital",
+                "equipment"
+              ]
+            }
+          },
+          {
+            "name": "companyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML-форма"
+          },
+          "404": {
+            "description": "Нет доступа к компании / неизвестный продукт"
+          }
+        }
+      }
+    },
+    "/app/applications/{id}/report-template": {
+      "get": {
+        "summary": "Скачать синтетический JSON-отчёт по сохранённым финансам заявки",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON-файл: attachment; filename=financial-report.json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Нет доступа к заявке"
+          },
+          "422": {
+            "description": "Сначала сохраните финансовые показатели и период"
           }
         }
       }
