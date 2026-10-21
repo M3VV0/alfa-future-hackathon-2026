@@ -32,7 +32,10 @@ input data:
 31. has_predecessors: bool
 32. has_successors: bool
 
-output data (class Scoring):
+output data (class Scorer):
+1. одно число, float, отражающее предложенную годовую ставку.
+
+на основе этого числа предлагается выносить решение о выдаче или не выдаче кредита и далее отправлять следующую информацию:
 1. OK/DECLINED/OFFER: enum
 2. id: int
 3. credit_sum: int (предположительно в тыс. руб.)
