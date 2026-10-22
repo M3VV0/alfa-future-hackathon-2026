@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user")
+@Table(name = "\"user\"")
 public class User {
     @Id
     private UUID id;
@@ -26,10 +26,6 @@ public class User {
 
     public UUID getId() {
         return id;
-    }
-
-    public String getEmail() {
-        return email;
     }
 
     public String getPasswordHash() {
