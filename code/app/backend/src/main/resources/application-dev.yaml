@@ -1,0 +1,7 @@
+# Fixed development keys. Do not use this profile in production.
+security:
+  auth:
+    secure-cookies: false
+  jwt:
+    private-key: classpath:dev/jwt-private.pem
+    public-key: classpath:dev/jwt-public.pem
