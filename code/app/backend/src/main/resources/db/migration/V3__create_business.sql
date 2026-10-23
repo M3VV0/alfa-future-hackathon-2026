@@ -1,71 +1,103 @@
-CREATE TABLE business
+CREATE TABLE "Business"
 (
-    id                       UUID PRIMARY KEY,
-    type                     VARCHAR(32) NOT NULL,
-    tax_id                   VARCHAR(12) NOT NULL UNIQUE,
-    creation_time            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ogrn                     VARCHAR(15),
-    name                     TEXT,
-    le_kpp                   VARCHAR(9),
-    address                  TEXT,
-    le_formation_method_name TEXT,
-    le_participants_count    INTEGER,
-    le_has_predecessors      BOOLEAN,
-    le_has_successors        BOOLEAN,
-    ie_sex                   VARCHAR(16),
-    ie_citizenship_kind      VARCHAR(16),
-    ie_country_code_raw      TEXT,
-    location                 JSONB,
-    msp_included_on          DATE,
-    products                 JSONB,
-    partnerships             JSONB,
-    registry_fetched_at      TIMESTAMPTZ,
-    msp_fetched_at           TIMESTAMPTZ,
-    CONSTRAINT business_type_check CHECK (
-        type IN ('INDIVIDUAL_ENTREPRENEUR', 'LEGAL_ENTITY')
-        ),
-    CONSTRAINT business_tax_id_format_check CHECK (
-        (type = 'INDIVIDUAL_ENTREPRENEUR' AND tax_id ~ '^[0-9]{12}$')
-            OR (type = 'LEGAL_ENTITY' AND tax_id ~ '^[0-9]{10}$')
-        ),
-    CONSTRAINT business_ogrn_format_check CHECK (
-        ogrn IS NULL
-            OR (type = 'LEGAL_ENTITY' AND ogrn ~ '^[0-9]{13}$')
-            OR (type = 'INDIVIDUAL_ENTREPRENEUR' AND ogrn ~ '^[0-9]{15}$')
-        ),
-    CONSTRAINT business_le_fields_check CHECK (
-        type = 'LEGAL_ENTITY'
-            OR (
-            le_kpp IS NULL
-                AND le_formation_method_name IS NULL
-                AND le_participants_count IS NULL
-                AND le_has_predecessors IS NULL
-                AND le_has_successors IS NULL
-            )
-        ),
-    CONSTRAINT business_ie_fields_check CHECK (
-        type = 'INDIVIDUAL_ENTREPRENEUR'
-            OR (
-            ie_sex IS NULL
-                AND ie_citizenship_kind IS NULL
-                AND ie_country_code_raw IS NULL
-            )
-        ),
-    CONSTRAINT business_le_participants_count_check CHECK (le_participants_count >= 0),
-    CONSTRAINT business_ie_sex_check CHECK (ie_sex IN ('MALE', 'FEMALE')),
-    CONSTRAINT business_ie_citizenship_kind_check CHECK (
-        ie_citizenship_kind IN ('RUSSIAN', 'FOREIGN', 'STATELESS')
+    "id"                    UUID        PRIMARY KEY,
+    "type"                  VARCHAR(32) NOT NULL,
+    "taxId"                 VARCHAR(12) NOT NULL UNIQUE,
+    "creationTime"          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ogrn"                  VARCHAR(15),
+    "registeredName"        TEXT,
+    "leKpp"                 VARCHAR(9),
+    "registeredAddress"     TEXT,
+    "registeredDate"        DATE,
+    "registrationStatus"    VARCHAR(32),
+    "legalEvents"           JSONB,
+    "primaryOkvedCode"      VARCHAR(8),
+    "additionalOkvedCodes"  JSONB,
+    "leFormationMethodName" TEXT,
+    "leParticipantsCount"   INTEGER,
+    "leHasPredecessors"     BOOLEAN,
+    "leHasSuccessors"       BOOLEAN,
+    "ieSex"                 VARCHAR(16),
+    "ieCitizenshipKind"     VARCHAR(16),
+    "ieCountryCodeRaw"      TEXT,
+    "location"              JSONB,
+    "mspIncludedOn"         DATE,
+    "mspCategory"           VARCHAR(16),
+    "mspAverageHeadcount"   INTEGER,
+    "mspReportYear"         INTEGER,
+    "mspNewlyRegistered"    BOOLEAN,
+    "mspSocialEnterprise"   BOOLEAN,
+    "mspSnapshotOn"         DATE,
+    "products"              JSONB,
+    "partnerships"          JSONB,
+
+    CONSTRAINT "BusinessTypeCheck" CHECK (
+        "type" IN ('INDIVIDUAL_ENTREPRENEUR', 'LEGAL_ENTITY')
+    ),
+    CONSTRAINT "BusinessRegistrationStatusCheck" CHECK (
+        "registrationStatus" IN (
+            'ACTIVE', 'REORGANIZING', 'TERMINATING', 'TERMINATED', 'OTHER'
         )
+    ),
+    CONSTRAINT "BusinessMspCategoryCheck" CHECK (
+        "mspCategory" IN ('MICRO', 'SMALL', 'MEDIUM')
+    ),
+    CONSTRAINT "BusinessMspAverageHeadcountCheck" CHECK (
+        "mspAverageHeadcount" >= 0
+    ),
+    CONSTRAINT "BusinessMspReportYearCheck" CHECK (
+        "mspReportYear" > 0
+    ),
+    CONSTRAINT "BusinessAdditionalOkvedCodesCheck" CHECK (
+        jsonb_typeof("additionalOkvedCodes") = 'array'
+        AND NOT jsonb_path_exists(
+            "additionalOkvedCodes",
+            '$[*] ? (@.type() != "string" || !(@ like_regex "^.{0,8}$" flag "s"))'
+        )
+    ),
+    CONSTRAINT "BusinessTaxIdFormatCheck" CHECK (
+        ("type" = 'INDIVIDUAL_ENTREPRENEUR' AND "taxId" ~ '^[0-9]{12}$')
+        OR ("type" = 'LEGAL_ENTITY' AND "taxId" ~ '^[0-9]{10}$')
+    ),
+    CONSTRAINT "BusinessOgrnFormatCheck" CHECK (
+        "ogrn" IS NULL
+        OR ("type" = 'LEGAL_ENTITY' AND "ogrn" ~ '^[0-9]{13}$')
+        OR ("type" = 'INDIVIDUAL_ENTREPRENEUR' AND "ogrn" ~ '^[0-9]{15}$')
+    ),
+    CONSTRAINT "BusinessLeFieldsCheck" CHECK (
+        "type" = 'LEGAL_ENTITY'
+        OR (
+            "leKpp" IS NULL
+            AND "leFormationMethodName" IS NULL
+            AND "leParticipantsCount" IS NULL
+            AND "leHasPredecessors" IS NULL
+            AND "leHasSuccessors" IS NULL
+        )
+    ),
+    CONSTRAINT "BusinessIeFieldsCheck" CHECK (
+        "type" = 'INDIVIDUAL_ENTREPRENEUR'
+        OR (
+            "ieSex" IS NULL
+            AND "ieCitizenshipKind" IS NULL
+            AND "ieCountryCodeRaw" IS NULL
+        )
+    ),
+    CONSTRAINT "BusinessLeParticipantsCountCheck" CHECK ("leParticipantsCount" >= 0),
+    CONSTRAINT "BusinessIeSexCheck" CHECK ("ieSex" IN ('MALE', 'FEMALE')),
+    CONSTRAINT "BusinessIeCitizenshipKindCheck" CHECK (
+        "ieCitizenshipKind" IN ('RUSSIAN', 'FOREIGN', 'STATELESS')
+    )
 );
 
-CREATE TABLE business_access
+CREATE TABLE "BusinessAccess"
 (
-    id          UUID PRIMARY KEY,
-    user_id     UUID        NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
-    business_id UUID        NOT NULL REFERENCES business (id) ON DELETE CASCADE,
-    role        VARCHAR(16) NOT NULL,
-    CONSTRAINT business_access_user_business_unique UNIQUE (user_id, business_id),
-    CONSTRAINT business_access_role_check CHECK (role IN ('OWNER', 'ADMIN', 'VIEWER'))
+    "id"         UUID        PRIMARY KEY,
+    "userId"     UUID        NOT NULL REFERENCES "User" ("id") ON DELETE CASCADE,
+    "businessId" UUID        NOT NULL REFERENCES "Business" ("id") ON DELETE CASCADE,
+    "role"       VARCHAR(16) NOT NULL,
+
+    CONSTRAINT "BusinessAccessUserBusinessUnique" UNIQUE ("userId", "businessId"),
+    CONSTRAINT "BusinessAccessRoleCheck" CHECK ("role" IN ('OWNER', 'ADMIN', 'VIEWER'))
 );
 
-CREATE INDEX business_access_business_id_idx ON business_access (business_id);
+CREATE INDEX "BusinessAccessBusinessIdIndex" ON "BusinessAccess" ("businessId");

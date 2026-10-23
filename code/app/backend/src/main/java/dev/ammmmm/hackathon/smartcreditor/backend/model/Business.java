@@ -1,17 +1,21 @@
 package dev.ammmmm.hackathon.smartcreditor.backend.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.jspecify.annotations.Nullable;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "business")
 public class Business {
     @Id
     private UUID id;
@@ -20,50 +24,37 @@ public class Business {
     @Column(nullable = false, length = 32)
     private Type type;
 
-    @Column(name = "tax_id", nullable = false, unique = true, length = 12)
+    @Column(nullable = false, unique = true, length = 12)
     private String taxId;
+
+    @Column(nullable = false, insertable = false, updatable = false)
+    private Instant creationTime;
 
     @Column(length = 15)
     private @Nullable String ogrn;
 
-    @Column(name = "name", columnDefinition = "text")
-    private @Nullable String name;
+    @Column(columnDefinition = "text")
+    private @Nullable String registeredName;
 
-    @Column(name = "le_kpp", length = 9)
-    private @Nullable String leKpp;
+    @Column(columnDefinition = "text")
+    private @Nullable String registeredAddress;
 
-    @Column(name = "address", columnDefinition = "text")
-    private @Nullable String address;
-
-    @Column(name = "le_formation_method_name", columnDefinition = "text")
-    private @Nullable String leFormationMethodName;
-
-    @Column(name = "le_participants_count")
-    private @Nullable Integer leParticipantsCount;
-
-    @Column(name = "le_has_predecessors")
-    private @Nullable Boolean leHasPredecessors;
-
-    @Column(name = "le_has_successors")
-    private @Nullable Boolean leHasSuccessors;
+    private @Nullable LocalDate registeredDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "ie_sex", length = 16)
-    private @Nullable Sex ieSex;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ie_citizenship_kind", length = 16)
-    private @Nullable CitizenshipKind ieCitizenshipKind;
-
-    @Column(name = "ie_country_code_raw", columnDefinition = "text")
-    private @Nullable String ieCountryCodeRaw;
+    @Column(length = 32)
+    private @Nullable RegistrationStatus registrationStatus;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private @Nullable Location location;
+    private @Nullable List<LegalEvent> legalEvents;
 
-    @Column(name = "msp_included_on")
-    private @Nullable LocalDate mspIncludedOn;
+    @Column(length = 8)
+    private @Nullable String primaryOkvedCode;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private @Nullable List<String> additionalOkvedCodes;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
@@ -71,13 +62,52 @@ public class Business {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
+    private @Nullable Location location;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private @Nullable List<Partnership> partnerships;
 
-    @Column(name = "registry_fetched_at")
-    private @Nullable Instant registryFetchedAt;
+    private @Nullable LocalDate mspIncludedOn;
 
-    @Column(name = "msp_fetched_at")
-    private @Nullable Instant mspFetchedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private @Nullable MspCategory mspCategory;
+
+    private @Nullable Integer mspAverageHeadcount;
+
+    private @Nullable Integer mspReportYear;
+
+    private @Nullable Boolean mspNewlyRegistered;
+
+    private @Nullable Boolean mspSocialEnterprise;
+
+    private @Nullable LocalDate mspSnapshotOn;
+
+    // Fields specific for Business.type==Type.INDIVIDUAL_ENTREPRENEUR
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private @Nullable Sex ieSex;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private @Nullable CitizenshipKind ieCitizenshipKind;
+
+    @Column(columnDefinition = "text")
+    private @Nullable String ieCountryCodeRaw;
+
+    // Fields specific for Business.type==Type.LEGAL_ENTITY
+    @Column(length = 9)
+    private @Nullable String leKpp;
+
+    @Column(columnDefinition = "text")
+    private @Nullable String leFormationMethodName;
+
+    private @Nullable Integer leParticipantsCount;
+
+    private @Nullable Boolean leHasPredecessors;
+
+    private @Nullable Boolean leHasSuccessors;
 
     protected Business() {
     }
@@ -108,12 +138,12 @@ public class Business {
         this.ogrn = ogrn;
     }
 
-    public @Nullable String getName() {
-        return name;
+    public @Nullable String getRegisteredName() {
+        return registeredName;
     }
 
-    public void setName(@Nullable String name) {
-        this.name = name;
+    public void setRegisteredName(@Nullable String registeredName) {
+        this.registeredName = registeredName;
     }
 
     public @Nullable String getLeKpp() {
@@ -124,12 +154,36 @@ public class Business {
         this.leKpp = leKpp;
     }
 
-    public @Nullable String getAddress() {
-        return address;
+    public @Nullable String getRegisteredAddress() {
+        return registeredAddress;
     }
 
-    public void setAddress(@Nullable String address) {
-        this.address = address;
+    public void setRegisteredAddress(@Nullable String registeredAddress) {
+        this.registeredAddress = registeredAddress;
+    }
+
+    public @Nullable LocalDate getRegisteredDate() {
+        return registeredDate;
+    }
+
+    public void setRegisteredDate(@Nullable LocalDate registeredDate) {
+        this.registeredDate = registeredDate;
+    }
+
+    public @Nullable RegistrationStatus getRegistrationStatus() {
+        return registrationStatus;
+    }
+
+    public void setRegistrationStatus(@Nullable RegistrationStatus registrationStatus) {
+        this.registrationStatus = registrationStatus;
+    }
+
+    public @Nullable List<LegalEvent> getLegalEvents() {
+        return legalEvents == null ? null : List.copyOf(legalEvents);
+    }
+
+    public void setLegalEvents(@Nullable List<LegalEvent> legalEvents) {
+        this.legalEvents = legalEvents == null ? null : List.copyOf(legalEvents);
     }
 
     public @Nullable String getLeFormationMethodName() {
@@ -204,6 +258,23 @@ public class Business {
         this.mspIncludedOn = mspIncludedOn;
     }
 
+    public @Nullable String getPrimaryOkvedCode() {
+        return primaryOkvedCode;
+    }
+
+    public void setPrimaryOkvedCode(@Nullable String primaryOkvedCode) {
+        this.primaryOkvedCode = primaryOkvedCode;
+    }
+
+    public @Nullable List<String> getAdditionalOkvedCodes() {
+        return additionalOkvedCodes == null ? null : List.copyOf(additionalOkvedCodes);
+    }
+
+    public void setAdditionalOkvedCodes(@Nullable List<String> additionalOkvedCodes) {
+        this.additionalOkvedCodes =
+                additionalOkvedCodes == null ? null : List.copyOf(additionalOkvedCodes);
+    }
+
     public @Nullable List<Product> getProducts() {
         return products == null ? null : List.copyOf(products);
     }
@@ -220,25 +291,75 @@ public class Business {
         this.partnerships = partnerships == null ? null : List.copyOf(partnerships);
     }
 
-    public @Nullable Instant getRegistryFetchedAt() {
-        return registryFetchedAt;
+    public @Nullable MspCategory getMspCategory() {
+        return mspCategory;
     }
 
-    public void setRegistryFetchedAt(@Nullable Instant registryFetchedAt) {
-        this.registryFetchedAt = registryFetchedAt;
+    public void setMspCategory(@Nullable MspCategory mspCategory) {
+        this.mspCategory = mspCategory;
     }
 
-    public @Nullable Instant getMspFetchedAt() {
-        return mspFetchedAt;
+    public @Nullable Integer getMspAverageHeadcount() {
+        return mspAverageHeadcount;
     }
 
-    public void setMspFetchedAt(@Nullable Instant mspFetchedAt) {
-        this.mspFetchedAt = mspFetchedAt;
+    public void setMspAverageHeadcount(@Nullable Integer mspAverageHeadcount) {
+        this.mspAverageHeadcount = mspAverageHeadcount;
+    }
+
+    public @Nullable Integer getMspReportYear() {
+        return mspReportYear;
+    }
+
+    public void setMspReportYear(@Nullable Integer mspReportYear) {
+        this.mspReportYear = mspReportYear;
+    }
+
+    public @Nullable Boolean getMspNewlyRegistered() {
+        return mspNewlyRegistered;
+    }
+
+    public void setMspNewlyRegistered(@Nullable Boolean mspNewlyRegistered) {
+        this.mspNewlyRegistered = mspNewlyRegistered;
+    }
+
+    public @Nullable Boolean getMspSocialEnterprise() {
+        return mspSocialEnterprise;
+    }
+
+    public void setMspSocialEnterprise(@Nullable Boolean mspSocialEnterprise) {
+        this.mspSocialEnterprise = mspSocialEnterprise;
+    }
+
+    public @Nullable LocalDate getMspSnapshotOn() {
+        return mspSnapshotOn;
+    }
+
+    public void setMspSnapshotOn(@Nullable LocalDate mspSnapshotOn) {
+        this.mspSnapshotOn = mspSnapshotOn;
     }
 
     public enum Type {
         INDIVIDUAL_ENTREPRENEUR,
         LEGAL_ENTITY
+    }
+
+    public enum RegistrationStatus {
+        ACTIVE,
+        REORGANIZING,
+        TERMINATING,
+        TERMINATED,
+        OTHER
+    }
+
+    public enum MspCategory {
+        MICRO,
+        SMALL,
+        MEDIUM
+    }
+
+    public enum LegalEventKind {
+        REORGANIZATION_COMPLETED
     }
 
     public enum Sex {
@@ -258,8 +379,16 @@ public class Business {
     }
 
     public record Product(
-            String okpd2Code,
+            String okpdCode,
             boolean innovativeOrHightech) {
+    }
+
+    public record LegalEvent(
+            LegalEventKind kind,
+            @Nullable String sourceStatusCode,
+            String description,
+            LocalDate eventDate,
+            LocalDate recordDate) {
     }
 
     public record Partnership(

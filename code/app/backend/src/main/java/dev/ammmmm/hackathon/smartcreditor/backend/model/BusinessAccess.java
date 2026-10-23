@@ -1,26 +1,27 @@
 package dev.ammmmm.hackathon.smartcreditor.backend.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
 import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "business_access", uniqueConstraints =
-        @UniqueConstraint(columnNames = {"user_id", "business_id"}))
+@Table(uniqueConstraints = @UniqueConstraint(
+        name = "BusinessAccessUserBusinessUnique", columnNames = {"userId", "businessId"}))
 public class BusinessAccess {
-    public enum Role {
-        OWNER,
-        ADMIN,
-        VIEWER
-    }
-
     @Id
     private UUID id;
 
-    @Column(name = "user_id", nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private UUID userId;
 
-    @Column(name = "business_id", nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private UUID businessId;
 
     @Enumerated(EnumType.STRING)
@@ -51,5 +52,11 @@ public class BusinessAccess {
 
     public Role getRole() {
         return role;
+    }
+
+    public enum Role {
+        OWNER,
+        ADMIN,
+        VIEWER
     }
 }
