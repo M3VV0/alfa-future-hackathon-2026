@@ -21,19 +21,21 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
-            update AuthSession session
-               set session.refreshTokenHash = :newHash
-             where session.id = :sessionId
-               and session.refreshTokenHash = :oldHash
-               and session.expiresAt > :now""")
+            UPDATE AuthSession session
+               SET session.refreshTokenHash = :newHash
+             WHERE session.id = :sessionId
+               AND session.refreshTokenHash = :oldHash
+               AND session.expiresAt > :now
+            """)
     int rotateRefreshToken(@Param("sessionId") UUID sessionId, @Param("oldHash") String oldHash,
                            @Param("newHash") String newHash, @Param("now") Instant now);
 
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
-            delete from AuthSession session
-             where session.id = :sessionId
-               and session.userId = :userId""")
+            DELETE FROM AuthSession session
+                  WHERE session.id = :sessionId
+                    AND session.userId = :userId
+            """)
     void deleteSession(@Param("sessionId") UUID sessionId, @Param("userId") UUID userId);
 }

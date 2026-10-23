@@ -1,11 +1,11 @@
-CREATE TABLE auth_session
+CREATE TABLE "AuthSession"
 (
-    id                 UUID PRIMARY KEY,
-    user_id            UUID        NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
-    refresh_token_hash VARCHAR(64) NOT NULL,
-    created_at         TIMESTAMPTZ NOT NULL,
-    expires_at         TIMESTAMPTZ NOT NULL,
-    CONSTRAINT auth_session_valid_period CHECK (expires_at > created_at)
+    "id"               UUID        PRIMARY KEY,
+    "userId"           UUID        NOT NULL REFERENCES "User" ("id") ON DELETE CASCADE,
+    "refreshTokenHash" VARCHAR(64) NOT NULL,
+    "createdAt"        TIMESTAMPTZ NOT NULL,
+    "expiresAt"        TIMESTAMPTZ NOT NULL,
+    CONSTRAINT "AuthSessionValidPeriod" CHECK ("expiresAt" > "createdAt")
 );
 
-CREATE INDEX auth_session_user_id_idx ON auth_session (user_id);
+CREATE INDEX "AuthSessionUserIdIndex" ON "AuthSession" ("userId");
