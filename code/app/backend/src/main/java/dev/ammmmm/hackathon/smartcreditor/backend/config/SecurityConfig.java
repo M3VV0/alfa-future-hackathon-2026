@@ -63,10 +63,13 @@ public class SecurityConfig {
                 paths.matcher(HttpMethod.POST, "/auth/refresh"),
                 paths.matcher(HttpMethod.POST, "/logout"));
 
+        var apiEndpoints = paths.matcher("/api/**");
         var loginEntryPoint = new LoginUrlAuthenticationEntryPoint("/login");
         AuthenticationEntryPoint entryPoint =
                 (request, response, exception) -> {
-                    if ("true".equals(request.getHeader("HX-Request"))) {
+                    if (apiEndpoints.matches(request)) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    } else if ("true".equals(request.getHeader("HX-Request"))) {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setHeader("HX-Redirect", request.getContextPath() + "/login");
                     } else {
