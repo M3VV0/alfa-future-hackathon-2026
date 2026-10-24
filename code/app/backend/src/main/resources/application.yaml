@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: smartcreditor-backend
+
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+    datatype:
+      enum:
+        fail-on-numbers-for-enums: true
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/smartcreditor}
+    username: ${DB_USER:smartcreditor}
+    password: ${DB_PASSWORD:localdev}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate.globally_quoted_identifiers: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    validate-migration-naming: true
+
+server:
+  port: 8080
+
+security:
+  auth:
+    secure-cookies: ${AUTH_COOKIE_SECURE:true}
+  jwt:
+    issuer: smartcreditor
+    private-key: ${JWT_PRIVATE_KEY}
+    public-key: ${JWT_PUBLIC_KEY}
