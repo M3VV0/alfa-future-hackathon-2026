@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" th:content="${_csrf.token}">
+    <meta name="csrf-header" th:content="${_csrf.headerName}">
+    <title>Новая заявка — Кредитный кабинет</title>
+    <link rel="stylesheet" th:href="@{/assets/cabinet.css}" href="/assets/cabinet.css">
+    <script th:src="@{/assets/application.js}" src="/assets/application.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Перейти к заявке</a>
+<div class="cabinet-shell">
+    <aside class="sidebar">
+        <a class="brand" th:href="@{/app}" href="/app">
+            <span class="brand-mark" aria-hidden="true">а<span></span></span>
+            <span>Кредитный кабинет<span class="brand-caption">Для предпринимателей</span></span>
+        </a>
+        <div class="sidebar-label">Кабинет бизнеса</div>
+        <nav aria-label="Основная навигация">
+            <a class="nav-item active" th:href="@{/app}" href="/app" aria-current="page">
+                <span class="nav-icon" aria-hidden="true">↗</span> Заявка на кредит
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <p>Больше возможностей<br><strong>для вашего бизнеса</strong></p>
+            <form id="logout-form" th:action="@{/logout}" action="/logout" method="post">
+                <button class="logout-button" type="submit"><span aria-hidden="true">↪</span> Выйти из кабинета</button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="cabinet-main">
+        <header class="topbar"><span>Финансирование</span><span class="topbar-label">Кабинет предпринимателя</span></header>
+        <main id="main" class="page-content">
+            <div class="breadcrumbs"><span>Кабинет</span><span aria-hidden="true">/</span><span>Новая заявка</span></div>
+            <div class="page-heading">
+                <div><span class="eyebrow">Для планов любого масштаба</span><h1>Заявка на кредит</h1>
+                    <p class="muted">Расскажите, какое финансирование нужно вашему бизнесу.</p></div>
+                <span class="status-badge"><span class="red-dot"></span> Новая заявка</span>
+            </div>
+
+            <noscript><div class="message message-error">Для отправки заявки включите JavaScript в браузере.</div></noscript>
+            <div id="submission-error" class="message message-error" role="alert" tabindex="-1" hidden>
+                <p id="submission-error-text"></p>
+                <a id="login-again" th:href="@{/login}" href="/login" hidden>Войти в кабинет</a>
+            </div>
+
+            <div id="application-workspace" class="application-workspace">
+                <form id="application-form" class="application-card" th:action="@{/api/credit/application/submit}"
+                      action="/api/credit/application/submit" method="post"
+                      th:attr="data-refresh-url=@{/auth/refresh},data-login-url=@{/login}">
+                    <section class="form-section" aria-labelledby="business-title">
+                        <div class="section-heading"><span class="section-index">01</span><div><h2 id="business-title">Ваша компания</h2>
+                            <p>Укажите компанию, от имени которой подаёте заявку.</p></div></div>
+                        <div class="field">
+                            <label for="businessId">Идентификатор компании</label>
+                            <input id="businessId" name="businessId" type="text" required spellcheck="false" autocomplete="off"
+                                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" maxlength="36"
+                                   pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                                   aria-describedby="business-hint businessId-error">
+                            <span id="business-hint" class="field-hint">UUID компании, к которой у вас есть доступ владельца или администратора.</span>
+                            <span id="businessId-error" class="field-error" hidden></span>
+                        </div>
+                    </section>
+                    <section class="form-section" aria-labelledby="parameters-title">
+                        <div class="section-heading"><span class="section-index">02</span><div><h2 id="parameters-title">Параметры кредита</h2>
+                            <p>Сумма, срок и цель вашего финансирования.</p></div></div>
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="requestedAmount">Сумма кредита</label>
+                                <div class="input-with-unit"><input id="requestedAmount" name="requestedAmount" type="text"
+                                    inputmode="decimal" required placeholder="1 000 000" autocomplete="off"
+                                    aria-describedby="requestedAmount-error"><span aria-hidden="true">₽</span></div>
+                                <span id="requestedAmount-error" class="field-error" hidden></span>
+                            </div>
+                            <div class="field">
+                                <label for="termMonths">Срок кредита, мес.</label>
+                                <input id="termMonths" name="termMonths" type="number" inputmode="numeric" min="1" max="2147483647"
+                                       step="1" required placeholder="24" aria-describedby="termMonths-error">
+                                <span id="termMonths-error" class="field-error" hidden></span>
+                            </div>
+                            <div class="field field-wide">
+                                <label for="financingPurpose">Цель финансирования</label>
+                                <select id="financingPurpose" name="financingPurpose" required aria-describedby="financingPurpose-error">
+                                    <option value="" disabled selected>Выберите цель</option>
+                                    <option value="WORKING_CAPITAL">Пополнение оборотных средств</option>
+                                    <option value="EQUIPMENT">Приобретение оборудования</option>
+                                    <option value="INVESTMENT">Инвестиции в развитие бизнеса</option>
+                                    <option value="REFINANCING">Рефинансирование</option>
+                                    <option value="BUSINESS_AUTO">Автомобиль для бизнеса</option>
+                                    <option value="COMMERCIAL_MORTGAGE">Коммерческая недвижимость</option>
+                                </select>
+                                <span id="financingPurpose-error" class="field-error" hidden></span>
+                            </div>
+                            <fieldset class="frequency-field field-wide">
+                                <legend>Периодичность платежей</legend>
+                                <div class="radio-options">
+                                    <label class="radio-option"><input type="radio" name="paymentFrequency" value="MONTHLY" checked required><span>Ежемесячно</span></label>
+                                    <label class="radio-option"><input type="radio" name="paymentFrequency" value="QUARTERLY"><span>Ежеквартально</span></label>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </section>
+                    <section class="form-section" aria-labelledby="collateral-title">
+                        <div class="section-heading"><span class="section-index">03</span><div><h2 id="collateral-title">Обеспечение <span class="optional">Необязательно</span></h2>
+                            <p>Укажите стоимость залога, если планируете его предоставить.</p></div></div>
+                        <div class="field collateral-field">
+                            <label for="declaredCollateralValue">Заявленная стоимость залога</label>
+                            <div class="input-with-unit"><input id="declaredCollateralValue" name="declaredCollateralValue" type="text"
+                                inputmode="decimal" placeholder="Не указана" autocomplete="off"
+                                aria-describedby="collateral-hint declaredCollateralValue-error"><span aria-hidden="true">₽</span></div>
+                            <span id="collateral-hint" class="field-hint">Если залога нет или стоимость неизвестна, оставьте поле пустым.</span>
+                            <span id="declaredCollateralValue-error" class="field-error" hidden></span>
+                        </div>
+                    </section>
+                    <div class="form-footer"><span class="field-hint">Проверьте данные перед отправкой.</span>
+                        <button id="submit-button" class="button button-primary" type="submit" disabled>
+                            <span id="submit-label">Отправить заявку</span><span aria-hidden="true">↗</span>
+                        </button>
+                    </div>
+                </form>
+
+                <aside class="summary-card" aria-labelledby="summary-title">
+                    <span class="section-number">Ваша заявка</span><h2 id="summary-title">Всё по делу</h2>
+                    <div class="summary-amount"><span>Сумма финансирования</span><strong id="summary-amount">— ₽</strong></div>
+                    <dl class="summary-list">
+                        <div><dt>Срок</dt><dd id="summary-term">Не указан</dd></div>
+                        <div><dt>Платежи</dt><dd id="summary-frequency">Ежемесячно</dd></div>
+                        <div class="summary-purpose"><dt>Цель</dt><dd id="summary-purpose">Не выбрана</dd></div>
+                        <div><dt>Стоимость залога</dt><dd id="summary-collateral">Не указана</dd></div>
+                    </dl>
+                    <div class="summary-note"><span aria-hidden="true">↗</span><p>Начните с параметров.<br>Они помогут сформировать ваш запрос на финансирование.</p></div>
+                </aside>
+            </div>
+
+            <section id="submission-success" class="success-card" aria-labelledby="success-title" hidden>
+                <span class="success-icon" aria-hidden="true">✓</span>
+                <span class="eyebrow">Заявка сохранена</span><h2 id="success-title" tabindex="-1">Заявка принята</h2>
+                <p class="muted">Ваш запрос на финансирование зарегистрирован.</p>
+                <div class="receipt"><span>Номер заявки</span><strong id="application-id"></strong></div>
+                <p class="field-hint">Сохраните номер, чтобы ссылаться на вашу заявку.</p>
+                <button id="new-application" class="button button-secondary" type="button">Создать новую заявку <span aria-hidden="true">↗</span></button>
+            </section>
+            <footer class="page-footer"><span>Кредитный кабинет предпринимателя</span><span>С фокусом на ваш бизнес</span></footer>
+        </main>
+    </div>
+</div>
+</body>
+</html>

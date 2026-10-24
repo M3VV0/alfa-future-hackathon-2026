@@ -57,6 +57,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder decoder, CsrfTokenRepository csrfTokens) {
         var paths = PathPatternRequestMatcher.withDefaults();
         var publicEndpoints = new OrRequestMatcher(
+                paths.matcher(HttpMethod.GET, "/assets/**"),
                 paths.matcher("/api/health"),
                 paths.matcher(HttpMethod.GET, "/login"),
                 paths.matcher(HttpMethod.POST, "/login"),

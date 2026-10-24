@@ -1,4 +1,8 @@
 # Fixed development keys. Do not use this profile in production.
+app:
+  demo-data:
+    enabled: ${DEMO_DATA_ENABLED:true}
+
 security:
   auth:
     secure-cookies: false
