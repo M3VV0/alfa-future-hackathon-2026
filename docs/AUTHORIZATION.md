@@ -23,7 +23,9 @@ Login uses `application/x-www-form-urlencoded`. Invalid or missing fields return
 
 Auth cookies are `access_token` and `refresh_token`, with HttpOnly, SameSite=Lax, Path=/, and Secure enabled by default. For local HTTP, set `AUTH_COOKIE_SECURE=false`. Configure keys through `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY`.
 
-Every POST requires CSRF protection: submit the `_csrf` field or the `X-XSRF-TOKEN` header containing the token obtained from server-rendered HTML. After login/logout, obtain a new CSRF token from the next page.
+Browser POST requests require CSRF protection: submit the `_csrf` field or the `X-XSRF-TOKEN` header containing the token obtained from server-rendered HTML. After login/logout, obtain a new CSRF token from the next page.
+
+The service callback `POST /scored` uses a separate security chain with the `X-Scorer-Token` header, configured through `SCORER_TOKEN`. It does not use browser JWT cookies or CSRF; an absent or blank configured token rejects all callbacks. This exception applies only to that method and path. See [SCORER.md](SCORER.md) for the contract, configuration, and result persistence.
 
 Auth endpoints and `/api/health` are accessible without an access JWT. For protected routes, authentication failure redirects ordinary requests to `/login`; HTMX receives `401` and `HX-Redirect: /login`.
 
