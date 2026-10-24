@@ -1,6 +1,6 @@
 CREATE TABLE "AuthSession"
 (
-    "id"               UUID        PRIMARY KEY,
+    "id"               UUID PRIMARY KEY,
     "userId"           UUID        NOT NULL REFERENCES "User" ("id") ON DELETE CASCADE,
     "refreshTokenHash" VARCHAR(64) NOT NULL,
     "createdAt"        TIMESTAMPTZ NOT NULL,

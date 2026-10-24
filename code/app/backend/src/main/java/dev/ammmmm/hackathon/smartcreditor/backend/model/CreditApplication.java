@@ -8,6 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -32,6 +34,13 @@ public class CreditApplication {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private Status status;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "scoredResult", columnDefinition = "jsonb")
+    private ScorerResult scorerResult;
+
+    @Column(name = "scoredAt")
+    private Instant scorerResultReceivedAt;
 
     protected CreditApplication() {
     }
@@ -66,6 +75,24 @@ public class CreditApplication {
 
     public void markProcessing() {
         this.status = Status.PROCESSING;
+    }
+
+    public ScorerResult getScorerResult() {
+        return scorerResult;
+    }
+
+    public Instant getScorerResultReceivedAt() {
+        return scorerResultReceivedAt;
+    }
+
+    public void complete(ScorerResult result, Instant now) {
+        this.scorerResult = Objects.requireNonNull(result);
+        this.scorerResultReceivedAt = now;
+        this.status = Status.COMPLETED;
+    }
+
+    public void markFailed() {
+        this.status = Status.FAILED;
     }
 
     public enum Status {

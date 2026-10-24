@@ -30,6 +30,23 @@ spring:
 server:
   port: 8080
 
+credit:
+  application:
+    worker:
+      enabled: ${SCORER_ENABLED:false}
+      poll-delay-ms: ${SCORER_POLL_DELAY_MS:1000}
+      initial-delay-ms: ${SCORER_INITIAL_DELAY_MS:1000}
+
+scorer:
+  base-url: ${SCORER_BASE_URL:http://localhost:8000}
+  token: ${SCORER_TOKEN:}
+  connect-timeout: ${SCORER_CONNECT_TIMEOUT:PT3S}
+  read-timeout: ${SCORER_READ_TIMEOUT:PT10S}
+  request-lease: ${SCORER_REQUEST_LEASE:PT30S}
+  callback-timeout: ${SCORER_CALLBACK_TIMEOUT:PT60S}
+  retry-delay: ${SCORER_RETRY_DELAY:PT5S}
+  max-attempts: ${SCORER_MAX_ATTEMPTS:5}
+
 app:
   ui:
     default-locale: ru

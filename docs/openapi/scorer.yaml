@@ -1,0 +1,99 @@
+openapi: 3.0.3
+info:
+  title: Scorer exchange
+  version: 1.0.0
+  description: Java sends a persisted application snapshot to the scorer; the scorer posts its result back to Java.
+security:
+  - scorerToken: []
+paths:
+  /request:
+    post:
+      servers:
+        - url: http://localhost:8000
+      summary: Accept a request in the external scorer after persisting it
+      description: Same id and parameters must be idempotent. Parameters are the row passed to Scorer.predict, without id or target. Decimal monetary values are strings in rubles.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, parameters]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                parameters:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '202':
+          description: Request committed; prediction and callback run asynchronously
+        '409':
+          description: Same id with conflicting parameters
+  /scored:
+    post:
+      servers:
+        - url: http://localhost:8080
+      summary: Persist a scoring result in Java
+      description: Service token is required; browser cookies and CSRF are not used. Identical results are idempotent, including numerically equal decimals. DECLINED is a valid business outcome, not a technical error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScorerResult'
+            example:
+              status: DECLINED
+              months: null
+              percent: null
+              sum: null
+              id: a051d4c4-6f76-4a56-a181-1ddcc6821177
+      responses:
+        '204':
+          description: Committed or identical result already stored
+        '400':
+          description: Invalid JSON, status, or financing terms
+        '401':
+          description: Missing or invalid service token, or token not configured
+        '404':
+          description: Application not found
+        '409':
+          description: Application not sent yet or conflicting result already stored
+components:
+  securitySchemes:
+    scorerToken:
+      type: apiKey
+      in: header
+      name: X-Scorer-Token
+  schemas:
+    ScorerResult:
+      type: object
+      required: [status, id]
+      description: OK and OFFER require positive months and sum and a non-negative percent. DECLINED allows omitted, null, or zero terms.
+      properties:
+        status:
+          type: string
+          enum: [OK, DECLINED, OFFER]
+        months:
+          type: integer
+          format: int32
+          minimum: 0
+          nullable: true
+        percent:
+          type: number
+          minimum: 0
+          multipleOf: 0.0001
+          maximum: 99999.9999
+          nullable: true
+          description: Annual percentage, e.g. 15.5 means 15.5 percent per year
+        sum:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+          maximum: 999999999999999.99
+          nullable: true
+          description: Amount in rubles
+        id:
+          type: string
+          format: uuid
