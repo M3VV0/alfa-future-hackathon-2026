@@ -10,11 +10,7 @@ set "DB_URL=jdbc:postgresql://localhost:5433/smartcreditor"
 set "DB_USER=smartcreditor"
 set "DB_PASSWORD=localdev"
 
-echo Resetting the development database: all dev data will be deleted.
-docker compose --project-name smartcreditor-dev --file compose.yaml down --volumes --remove-orphans
-if errorlevel 1 goto :failed
-
-docker compose --project-name smartcreditor-dev --file compose.yaml up --detach --force-recreate --wait --wait-timeout 90
+docker compose --project-name smartcreditor-dev --file compose.yaml up --detach --wait --wait-timeout 90
 if errorlevel 1 goto :failed
 
 cd /d "code\app\backend"
@@ -36,6 +32,7 @@ if not exist "%app_jar%" (
     popd
     exit /b 1
 )
+echo Login: http://localhost:8080/login - demo accounts and company UUIDs are listed in README.md.
 java -jar "%app_jar%" --spring.profiles.active=dev
 
 :failed
