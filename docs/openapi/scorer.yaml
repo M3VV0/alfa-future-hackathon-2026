@@ -42,7 +42,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ScoredResult'
+              $ref: '#/components/schemas/ScorerResult'
             example:
               status: DECLINED
               months: null
@@ -67,7 +67,7 @@ components:
       in: header
       name: X-Scorer-Token
   schemas:
-    ScoredResult:
+    ScorerResult:
       type: object
       required: [status, id]
       description: OK and OFFER require positive months and sum and a non-negative percent. DECLINED allows omitted, null, or zero terms.

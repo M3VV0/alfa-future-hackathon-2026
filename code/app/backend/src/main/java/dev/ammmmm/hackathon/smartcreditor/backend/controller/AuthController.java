@@ -113,7 +113,8 @@ public class AuthController {
 
     @ExceptionHandler({MissingServletRequestParameterException.class, HandlerMethodValidationException.class})
     public ModelAndView invalidLoginForm() {
-        return loginError(HttpStatus.UNPROCESSABLE_CONTENT, "Enter a valid email address and a non-empty password");
+        return loginError(HttpStatus.UNPROCESSABLE_CONTENT,
+                "Enter a valid email address and a non-empty password");
     }
 
     private void writeCookie(HttpServletResponse response, String name,

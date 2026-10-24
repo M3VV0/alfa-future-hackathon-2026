@@ -36,10 +36,11 @@ public class CreditApplication {
     private Status status;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    private ScoredResult scoredResult;
+    @Column(name = "scoredResult", columnDefinition = "jsonb")
+    private ScorerResult scorerResult;
 
-    private Instant scoredAt;
+    @Column(name = "scoredAt")
+    private Instant scorerResultReceivedAt;
 
     protected CreditApplication() {
     }
@@ -76,17 +77,17 @@ public class CreditApplication {
         this.status = Status.PROCESSING;
     }
 
-    public ScoredResult getScoredResult() {
-        return scoredResult;
+    public ScorerResult getScorerResult() {
+        return scorerResult;
     }
 
-    public Instant getScoredAt() {
-        return scoredAt;
+    public Instant getScorerResultReceivedAt() {
+        return scorerResultReceivedAt;
     }
 
-    public void complete(ScoredResult result, Instant now) {
-        this.scoredResult = Objects.requireNonNull(result);
-        this.scoredAt = now;
+    public void complete(ScorerResult result, Instant now) {
+        this.scorerResult = Objects.requireNonNull(result);
+        this.scorerResultReceivedAt = now;
         this.status = Status.COMPLETED;
     }
 

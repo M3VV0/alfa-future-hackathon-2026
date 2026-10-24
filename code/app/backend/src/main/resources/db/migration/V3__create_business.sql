@@ -1,6 +1,6 @@
 CREATE TABLE "Business"
 (
-    "id"                    UUID        PRIMARY KEY,
+    "id"                    UUID PRIMARY KEY,
     "type"                  VARCHAR(32) NOT NULL,
     "taxId"                 VARCHAR(12) NOT NULL UNIQUE,
     "creationTime"          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -33,65 +33,65 @@ CREATE TABLE "Business"
 
     CONSTRAINT "BusinessTypeCheck" CHECK (
         "type" IN ('INDIVIDUAL_ENTREPRENEUR', 'LEGAL_ENTITY')
-    ),
+        ),
     CONSTRAINT "BusinessRegistrationStatusCheck" CHECK (
         "registrationStatus" IN (
-            'ACTIVE', 'REORGANIZING', 'TERMINATING', 'TERMINATED', 'OTHER'
-        )
-    ),
+                                 'ACTIVE', 'REORGANIZING', 'TERMINATING', 'TERMINATED', 'OTHER'
+            )
+        ),
     CONSTRAINT "BusinessMspCategoryCheck" CHECK (
         "mspCategory" IN ('MICRO', 'SMALL', 'MEDIUM')
-    ),
+        ),
     CONSTRAINT "BusinessMspAverageHeadcountCheck" CHECK (
         "mspAverageHeadcount" >= 0
-    ),
+        ),
     CONSTRAINT "BusinessMspReportYearCheck" CHECK (
         "mspReportYear" > 0
-    ),
+        ),
     CONSTRAINT "BusinessAdditionalOkvedCodesCheck" CHECK (
         jsonb_typeof("additionalOkvedCodes") = 'array'
-        AND NOT jsonb_path_exists(
-            "additionalOkvedCodes",
-            '$[*] ? (@.type() != "string" || !(@ like_regex "^.{0,8}$" flag "s"))'
-        )
-    ),
+            AND NOT jsonb_path_exists(
+                "additionalOkvedCodes",
+                '$[*] ? (@.type() != "string" || !(@ like_regex "^.{0,8}$" flag "s"))'
+                    )
+        ),
     CONSTRAINT "BusinessTaxIdFormatCheck" CHECK (
         ("type" = 'INDIVIDUAL_ENTREPRENEUR' AND "taxId" ~ '^[0-9]{12}$')
-        OR ("type" = 'LEGAL_ENTITY' AND "taxId" ~ '^[0-9]{10}$')
-    ),
+            OR ("type" = 'LEGAL_ENTITY' AND "taxId" ~ '^[0-9]{10}$')
+        ),
     CONSTRAINT "BusinessOgrnFormatCheck" CHECK (
         "ogrn" IS NULL
-        OR ("type" = 'LEGAL_ENTITY' AND "ogrn" ~ '^[0-9]{13}$')
-        OR ("type" = 'INDIVIDUAL_ENTREPRENEUR' AND "ogrn" ~ '^[0-9]{15}$')
-    ),
+            OR ("type" = 'LEGAL_ENTITY' AND "ogrn" ~ '^[0-9]{13}$')
+            OR ("type" = 'INDIVIDUAL_ENTREPRENEUR' AND "ogrn" ~ '^[0-9]{15}$')
+        ),
     CONSTRAINT "BusinessLeFieldsCheck" CHECK (
         "type" = 'LEGAL_ENTITY'
-        OR (
+            OR (
             "leKpp" IS NULL
-            AND "leFormationMethodName" IS NULL
-            AND "leParticipantsCount" IS NULL
-            AND "leHasPredecessors" IS NULL
-            AND "leHasSuccessors" IS NULL
-        )
-    ),
+                AND "leFormationMethodName" IS NULL
+                AND "leParticipantsCount" IS NULL
+                AND "leHasPredecessors" IS NULL
+                AND "leHasSuccessors" IS NULL
+            )
+        ),
     CONSTRAINT "BusinessIeFieldsCheck" CHECK (
         "type" = 'INDIVIDUAL_ENTREPRENEUR'
-        OR (
+            OR (
             "ieSex" IS NULL
-            AND "ieCitizenshipKind" IS NULL
-            AND "ieCountryCodeRaw" IS NULL
-        )
-    ),
+                AND "ieCitizenshipKind" IS NULL
+                AND "ieCountryCodeRaw" IS NULL
+            )
+        ),
     CONSTRAINT "BusinessLeParticipantsCountCheck" CHECK ("leParticipantsCount" >= 0),
     CONSTRAINT "BusinessIeSexCheck" CHECK ("ieSex" IN ('MALE', 'FEMALE')),
     CONSTRAINT "BusinessIeCitizenshipKindCheck" CHECK (
         "ieCitizenshipKind" IN ('RUSSIAN', 'FOREIGN', 'STATELESS')
-    )
+        )
 );
 
 CREATE TABLE "BusinessAccess"
 (
-    "id"         UUID        PRIMARY KEY,
+    "id"         UUID PRIMARY KEY,
     "userId"     UUID        NOT NULL REFERENCES "User" ("id") ON DELETE CASCADE,
     "businessId" UUID        NOT NULL REFERENCES "Business" ("id") ON DELETE CASCADE,
     "role"       VARCHAR(16) NOT NULL,

@@ -5,7 +5,7 @@ import dev.ammmmm.hackathon.smartcreditor.backend.model.Business;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplication;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplicationRequest;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplicationTask;
-import dev.ammmmm.hackathon.smartcreditor.backend.model.ScoredResult;
+import dev.ammmmm.hackathon.smartcreditor.backend.model.ScorerResult;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.User;
 import dev.ammmmm.hackathon.smartcreditor.backend.repository.BusinessRepository;
 import dev.ammmmm.hackathon.smartcreditor.backend.repository.CreditApplicationRepository;
@@ -64,7 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class ScoringExchangeTests {
+class ScorerExchangeTests {
     private static final String SCHEMA = "scorer_test_" + UUID.randomUUID().toString().replace("-", "");
     private static final String TOKEN = "scoring-test-token";
 
@@ -152,10 +152,10 @@ class ScoringExchangeTests {
         assertEquals(CreditApplicationTask.Status.COMPLETED, tasks.findById(id).orElseThrow().getStatus());
         var application = applications.findById(id).orElseThrow();
         assertEquals(CreditApplication.Status.COMPLETED, application.getStatus());
-        assertEquals(ScoredResult.Status.DECLINED, application.getScoredResult().status());
-        Instant scoredAt = application.getScoredAt();
+        assertEquals(ScorerResult.Status.DECLINED, application.getScorerResult().status());
+        Instant scorerResultReceivedAt = application.getScorerResultReceivedAt();
         callback(decline(id), 204);
-        assertEquals(scoredAt, applications.findById(id).orElseThrow().getScoredAt());
+        assertEquals(scorerResultReceivedAt, applications.findById(id).orElseThrow().getScorerResultReceivedAt());
         callback("{\"id\":\"" + id + "\",\"status\":\"OK\",\"months\":12,\"percent\":15,\"sum\":100000}", 409);
     }
 

@@ -24,7 +24,8 @@ public class CreditApplicationController {
     private final BusinessAccessRepository businessAccessRepository;
     private final CreditApplicationService creditApplicationService;
 
-    public CreditApplicationController(BusinessAccessRepository businessAccessRepository, CreditApplicationService creditApplicationService) {
+    public CreditApplicationController(
+            BusinessAccessRepository businessAccessRepository, CreditApplicationService creditApplicationService) {
         this.businessAccessRepository = businessAccessRepository;
         this.creditApplicationService = creditApplicationService;
     }

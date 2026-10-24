@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
-public record ScoredResult(
+public record ScorerResult(
         @NotNull Status status,
         @PositiveOrZero Integer months,
         @DecimalMin("0") @Digits(integer = 5, fraction = 4) BigDecimal percent,
@@ -28,7 +28,7 @@ public record ScoredResult(
                 && sum != null && sum.signum() > 0);
     }
 
-    public boolean sameResult(ScoredResult other) {
+    public boolean sameResult(ScorerResult other) {
         return status == other.status && Objects.equals(months, other.months) && Objects.equals(id, other.id)
                 && sameDecimal(percent, other.percent) && sameDecimal(sum, other.sum);
     }

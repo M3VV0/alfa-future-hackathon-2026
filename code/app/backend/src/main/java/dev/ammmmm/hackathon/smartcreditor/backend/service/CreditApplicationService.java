@@ -4,7 +4,8 @@ import dev.ammmmm.hackathon.smartcreditor.backend.client.ScorerClient;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplication;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplicationRequest;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplicationTask;
-import dev.ammmmm.hackathon.smartcreditor.backend.model.ScoredResult;
+import dev.ammmmm.hackathon.smartcreditor.backend.model.ScorerResult;
+import dev.ammmmm.hackathon.smartcreditor.backend.repository.BusinessRepository;
 import dev.ammmmm.hackathon.smartcreditor.backend.repository.CreditApplicationRepository;
 import dev.ammmmm.hackathon.smartcreditor.backend.repository.CreditApplicationTaskRepository;
 import org.jspecify.annotations.Nullable;
@@ -32,7 +33,7 @@ public class CreditApplicationService {
     private static final Logger log = LoggerFactory.getLogger(CreditApplicationService.class);
     private final CreditApplicationRepository applications;
     private final CreditApplicationTaskRepository tasks;
-    private final ScoringPayloadFactory payloads;
+    private final BusinessRepository businesses;
     private final @Nullable ScorerClient scorer;
     private final TransactionTemplate transactions;
     private final int maxAttempts;
@@ -42,7 +43,7 @@ public class CreditApplicationService {
 
     public CreditApplicationService(CreditApplicationRepository applications,
                                     CreditApplicationTaskRepository tasks,
-                                    ScoringPayloadFactory payloads,
+                                    BusinessRepository businesses,
                                     ObjectProvider<ScorerClient> scorerProvider,
                                     PlatformTransactionManager transactionManager,
                                     @Value("${credit.application.worker.enabled:false}") boolean enabled,
@@ -56,7 +57,7 @@ public class CreditApplicationService {
         }
         this.applications = applications;
         this.tasks = tasks;
-        this.payloads = payloads;
+        this.businesses = businesses;
         this.scorer = enabled ? scorerProvider.getObject() : null;
         this.transactions = new TransactionTemplate(transactionManager);
         this.maxAttempts = maxAttempts;
@@ -69,7 +70,8 @@ public class CreditApplicationService {
     public UUID submit(UUID userId, CreditApplicationRequest request) {
         var application = new CreditApplication(userId, request);
         applications.saveAndFlush(application);
-        tasks.save(new CreditApplicationTask(application.getId(), application.getCreationTime(), payloads.create(application)));
+        tasks.save(new CreditApplicationTask(
+                application.getId(), application.getCreationTime(), createScorerPayload(application)));
         return application.getId();
     }
 
@@ -91,7 +93,8 @@ public class CreditApplicationService {
             String code = error instanceof RestClientResponseException response
                     ? "SCORER_HTTP_" + response.getStatusCode().value() : "SCORER_UNAVAILABLE";
             finishDispatch(dispatch, code, permanent);
-            log.warn("Scorer dispatch failed: application={}, attempt={}, code={}", dispatch.id(), dispatch.attempt(), code);
+            log.warn("Scorer dispatch failed: application={}, attempt={}, code={}",
+                    dispatch.id(), dispatch.attempt(), code);
             return;
         }
         finishDispatch(dispatch, null, false);
@@ -108,18 +111,23 @@ public class CreditApplicationService {
             application.markFailed();
             return null;
         }
-        // V4 tasks have no snapshot; freeze it once when first dispatched.
-        if (task.getRequestPayload() == null) task.setRequestPayload(payloads.create(application));
+        if (task.getRequestPayload() == null) task.setRequestPayload(createScorerPayload(application));
         task.claim(now, now.plus(requestLease));
         application.markProcessing();
         return new Dispatch(application.getId(), task.getAttempts(), task.getRequestPayload());
+    }
+
+    private Map<String, Object> createScorerPayload(CreditApplication application) {
+        var business = businesses.findById(application.getRequest().businessId()).orElseThrow();
+        return ScorerClient.createPayload(application, business);
     }
 
     private void finishDispatch(Dispatch dispatch, @Nullable String error, boolean permanent) {
         transactions.executeWithoutResult(transaction -> {
             var task = tasks.findByIdForUpdate(dispatch.id()).orElseThrow();
             // A late ACK or expired attempt must not overwrite a callback or newer dispatch.
-            if (task.getStatus() != CreditApplicationTask.Status.PROCESSING || task.getAttempts() != dispatch.attempt()) return;
+            if (task.getStatus() != CreditApplicationTask.Status.PROCESSING
+                    || task.getAttempts() != dispatch.attempt()) return;
             Instant now = Instant.now();
             if (error == null) {
                 task.awaitResult(now, now.plus(callbackTimeout));
@@ -133,12 +141,12 @@ public class CreditApplicationService {
     }
 
     @Transactional
-    public void acceptScored(ScoredResult result) {
+    public void acceptScorerResult(ScorerResult result) {
         var task = tasks.findByIdForUpdate(result.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
         var application = applications.findById(result.id()).orElseThrow();
-        if (application.getScoredResult() != null) {
-            if (!application.getScoredResult().sameResult(result)) {
+        if (application.getScorerResult() != null) {
+            if (!application.getScorerResult().sameResult(result)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "A different scoring result is already stored");
             }
             return;
@@ -151,5 +159,6 @@ public class CreditApplicationService {
         task.complete(now);
     }
 
-    private record Dispatch(UUID id, int attempt, Map<String, Object> payload) { }
+    private record Dispatch(UUID id, int attempt, Map<String, Object> payload) {
+    }
 }

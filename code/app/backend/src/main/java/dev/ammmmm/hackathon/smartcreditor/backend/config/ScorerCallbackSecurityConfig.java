@@ -17,7 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -40,7 +40,7 @@ public class ScorerCallbackSecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("SCORER"))
-                .addFilterBefore(new CallbackTokenFilter(token), AuthorizationFilter.class);
+                .addFilterAfter(new CallbackTokenFilter(token), LogoutFilter.class);
         return http.build();
     }
 
