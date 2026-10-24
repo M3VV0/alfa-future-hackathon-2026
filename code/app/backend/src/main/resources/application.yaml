@@ -47,6 +47,10 @@ scorer:
   retry-delay: ${SCORER_RETRY_DELAY:PT5S}
   max-attempts: ${SCORER_MAX_ATTEMPTS:5}
 
+app:
+  ui:
+    default-locale: ru
+
 security:
   auth:
     secure-cookies: ${AUTH_COOKIE_SECURE:true}

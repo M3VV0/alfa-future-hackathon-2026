@@ -10,10 +10,7 @@ export DB_URL=jdbc:postgresql://localhost:5433/smartcreditor
 export DB_USER=smartcreditor
 export DB_PASSWORD=localdev
 
-printf '%s\n' 'Resetting the development database: all dev data will be deleted.'
-docker compose --project-name smartcreditor-dev --file compose.yaml down --volumes --remove-orphans
-
-docker compose --project-name smartcreditor-dev --file compose.yaml up --detach --force-recreate --wait --wait-timeout 90
+docker compose --project-name smartcreditor-dev --file compose.yaml up --detach --wait --wait-timeout 90
 
 cd code/app/backend
 sh ./mvnw clean package
@@ -23,4 +20,5 @@ if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
     printf '%s\n' 'Expected exactly one application JAR in target/.' >&2
     exit 1
 fi
+printf '%s\n' 'Login: http://localhost:8080/login — demo accounts and company UUIDs are listed in README.md.'
 exec java -jar "$1" --spring.profiles.active=dev

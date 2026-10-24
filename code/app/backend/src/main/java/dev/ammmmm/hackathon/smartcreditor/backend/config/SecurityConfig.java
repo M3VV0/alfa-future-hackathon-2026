@@ -58,6 +58,8 @@ public class SecurityConfig {
         var paths = PathPatternRequestMatcher.withDefaults();
         var publicEndpoints = new OrRequestMatcher(
                 paths.matcher("/api/health"),
+                paths.matcher(HttpMethod.GET, "/assets/**"),
+                paths.matcher(HttpMethod.GET, "/auth/csrf"),
                 paths.matcher(HttpMethod.GET, "/login"),
                 paths.matcher(HttpMethod.POST, "/login"),
                 paths.matcher(HttpMethod.POST, "/auth/refresh"),

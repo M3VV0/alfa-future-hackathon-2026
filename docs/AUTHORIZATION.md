@@ -5,6 +5,7 @@ Local accounts use an email address and password. The backend uses Spring Securi
 | Endpoint | Request | Successful response |
 | --- | --- | ---  |
 | `GET /login` | — | Render the `auth/login` view. |
+| `GET /auth/csrf` | — | JSON with `headerName`, `parameterName`, and `token`; `Cache-Control: no-store`. An access JWT is not required. |
 | `POST /login` | Form fields `email`, `password`, and CSRF token | Create a session and set cookies; `303 → /app`. |
 | `POST /auth/refresh` | Refresh cookie and CSRF token | Replace both tokens; `204`. A valid access token is not required. |
 | `POST /logout` | Refresh cookie and CSRF token | Revoke the session identified by a verified refresh token, clear cookies; `303 → /login`. Repeated logout succeeds. |
@@ -26,7 +27,10 @@ Auth cookies are `access_token` and `refresh_token`, with HttpOnly, SameSite=Lax
 Browser POST requests require CSRF protection: submit the `_csrf` field or the `X-XSRF-TOKEN` header containing the token obtained from server-rendered HTML. After login/logout, obtain a new CSRF token from the next page.
 
 The service callback `POST /scored` uses a separate security chain with the `X-Scorer-Token` header, configured through `SCORER_TOKEN`. It does not use browser JWT cookies or CSRF; an absent or blank configured token rejects all callbacks. This exception applies only to that method and path. See [SCORER.md](SCORER.md) for the contract, configuration, and result persistence.
+Every POST requires CSRF protection: submit the `_csrf` form field, or obtain JSON from `GET /auth/csrf` and send `token` in the request header named by `headerName`. Server-rendered forms continue to include a token. After login/logout, obtain a fresh token before the next POST.
 
 Auth endpoints and `/api/health` are accessible without an access JWT. For protected routes, authentication failure redirects ordinary requests to `/login`; HTMX receives `401` and `HX-Redirect: /login`.
 
-This document describes the code. Page templates and automatic refresh are not implemented yet; end-to-end verification has not been performed.
+The login template is served at `/login`; after login, `/app` displays the credit application form. Static styles and scripts under `/assets/` are available without authentication. The form uses the existing JSON submission endpoint. Before submission, refresh, and logout, the frontend obtains a CSRF token from `GET /auth/csrf` and sends it in the returned `headerName` header. This endpoint skips access-JWT authentication so an expired access cookie does not prevent token retrieval. All POST endpoints retain CSRF protection. If submission is rejected with `401`, it attempts refresh once before retrying; network failures and other responses are never retried automatically.
+
+The company UUID must be entered manually because a company-list endpoint is not available. In the `dev` profile, the application adds missing synthetic users, companies, and memberships at startup unless `DEMO_DATA_ENABLED=false`; existing passwords and roles are preserved. The initializer is excluded when `prod` is active. Credentials and company UUIDs are listed in [README.md](../README.md). The frontend does not create accounts. A successful submission displays the accepted application UUID, without implying a credit decision or ongoing processing.
