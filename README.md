@@ -1,101 +1,71 @@
-# Кредитный кабинет предпринимателя
+# Business Credit Portal
 
-Прототип кредитного кабинета для малого бизнеса. Сейчас доступны вход, проверка прав на компанию и подача заявки с сохранением в PostgreSQL. Веб-интерфейс использует Spring Boot и Thymeleaf; отдельный Python-модуль расчёта ставки находится в `code/scorer` и пока не подключён к обработке заявок.
+Small-business credit portal prototype with sign-in, company access checks, and applications stored in PostgreSQL. Web UI: Spring Boot/Thymeleaf (RU/EN). Standalone Python rate estimator: `code/scorer`.
 
-## Локальный запуск
+## Run locally
 
-Нужны JDK 21 или новее и запущенный Docker с Compose. Maven скачивается через wrapper; при первой сборке нужен доступ к Maven Central. Запускайте команды из корня репозитория.
+Requires JDK 21+ and running Docker with Compose. First build needs Maven Central access; Maven is downloaded by the wrapper. Run from the repository root.
 
-macOS / Linux:
+| Platform | Start | Reset database and start |
+| --- | --- | --- |
+| macOS / Linux | `sh ./start_dev.sh` | `sh ./start_dev_clean.sh` |
+| Windows (cmd) | `start_dev.bat` | `start_dev_clean.bat` |
 
-```sh
-sh ./start_dev.sh
-```
+Scripts start PostgreSQL (`5433`), build and test the backend, then run it on `8080` with the `dev` profile. Flyway applies migrations; missing sample accounts, businesses, and memberships are added. Normal startup preserves data.
 
-Windows (cmd):
+[Sign in](http://localhost:8080/login) · [Application form](http://localhost:8080/app) (after sign-in) · [Health check](http://localhost:8080/api/health) (`OK`).
 
-```bat
-start_dev.bat
-```
+**Reset deletes all dev data, including applications, accounts, and password changes**, then runs normal startup. It affects only the `smartcreditor-dev` Docker Compose project.
 
-Скрипт запускает PostgreSQL на порту `5433`, собирает backend, выполняет тесты и запускает приложение на порту `8080` с профилем `dev`. Flyway создаёт схему, затем приложение добавляет недостающие демонстрационные аккаунты и компании. Повторный запуск сохраняет БД, заявки, пароли и роли существующих пользователей.
-
-- Вход: <http://localhost:8080/login>.
-- Форма заявки после входа: <http://localhost:8080/app>.
-- Проверка backend: <http://localhost:8080/api/health>, ответ `OK`.
-
-### Запуск с очисткой dev-базы
-
-Сначала остановите работающий backend через `Ctrl+C`. Для полного сброса и нового запуска используйте отдельный скрипт.
-
-macOS / Linux:
-
-```sh
-sh ./start_dev_clean.sh
-```
-
-Windows (cmd):
-
-```bat
-start_dev_clean.bat
-```
-
-**Скрипт удаляет все данные dev-базы, включая заявки, пользователей и изменения паролей.** Затем выполняется обычный dev-запуск: заново применяются миграции и при стандартных настройках создаются тестовые аккаунты. Очистка ограничена Docker Compose-проектом `smartcreditor-dev`; обычные `start_dev.sh` и `start_dev.bat` сохраняют данные.
-
-## Тестовые аккаунты
-
-Общий начальный пароль: **`DemoCredit2026!`**. Все сведения синтетические, email используют домен `.test`, ИНН предназначены для локального демо и не проверяются во внешних реестрах.
-
-| Email | Роль | Компания | Возможность подать заявку |
-| --- | --- | --- | --- |
-| `owner@demo.test` | `OWNER` | ООО «Демо Оборот» | Да |
-| `admin@demo.test` | `ADMIN` | ООО «Демо Оборот» | Да |
-| `viewer@demo.test` | `VIEWER` | ООО «Демо Оборот» | Нет, сервер вернёт `403` |
-| `other@demo.test` | `OWNER` | ИП Демо Развитие | Да, только для своей компании |
-
-Идентификаторы для поля «Идентификатор компании» в форме:
-
-| Компания | UUID |
-| --- | --- |
-| ООО «Демо Оборот» | `10000000-0000-4000-8000-000000000001` |
-| ИП Демо Развитие | `10000000-0000-4000-8000-000000000002` |
-
-При совпадении email или ИНН используются уже существующие записи; их пароль, сведения и права не перезаписываются. Поэтому пароль выше относится к первоначально созданным аккаунтам.
-
-## Проверка подачи заявки
-
-1. Войти как `owner@demo.test`.
-2. Указать UUID ООО «Демо Оборот» из таблицы.
-3. Ввести сумму `1000000`, срок `24`, выбрать цель и периодичность платежей. Стоимость залога можно оставить пустой.
-4. Нажать «Отправить заявку». Отобразится подтверждение и номер сохранённой заявки.
-5. Выйти и повторить с `viewer@demo.test`: отправка должна завершиться сообщением об отсутствии прав.
-6. Войти как `other@demo.test`: UUID ООО «Демо Оборот» недоступен (`404`), UUID ИП Демо Развитие позволяет отправить заявку.
-7. Перезапустить приложение: аккаунты и ранее поданные заявки сохраняются, дубли демо-пользователей и компаний не появляются.
-
-Сохранённая заявка и её задание имеют статус `PENDING`. Фоновая обработка по умолчанию выключена; подтверждение приёма не является кредитным решением. Защиты от повторной подачи после потери ответа пока нет.
-
-## Настройки разработки
-
-Тестовые данные добавляются только при профиле `dev` и `app.demo-data.enabled=true`. Профиль `prod` исключает создание демо-данных, в том числе при одновременном включении `dev`. Добавление можно отключить, сохранив уже существующие записи:
-
-```sh
-DEMO_DATA_ENABLED=false sh ./start_dev.sh
-```
-
-Для запуска из IDE или через `spring-boot:run` используются те же настройки:
-
-| Переменная | Значение для локальной разработки |
-| --- | --- |
-| `SPRING_PROFILES_ACTIVE` | `dev` |
-| `DB_URL` | `jdbc:postgresql://localhost:5433/smartcreditor` |
-| `DB_USER` | `smartcreditor` |
-| `DB_PASSWORD` | `localdev` |
-| `DEMO_DATA_ENABLED` | `true` по умолчанию в `dev` |
-
-`Ctrl+C` останавливает backend. Чтобы остановить PostgreSQL без удаления данных:
+Use `Ctrl+C` to stop the backend before restarting/resetting. Stop PostgreSQL without deleting data:
 
 ```sh
 docker compose --project-name smartcreditor-dev stop
 ```
 
-Описание авторизации: [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md). Целевая архитектура и будущие этапы: [docs/architecture/architecture.md](docs/architecture/architecture.md).
+## Sample accounts
+
+Initial shared password: **`DemoCredit2026!`**. All data is synthetic; `.test` emails and tax IDs are local fixtures. Tax IDs are not checked externally.
+
+| Email | Role | Business | Can submit |
+| --- | --- | --- | --- |
+| `owner@demo.test` | `OWNER` | ООО «Демо Оборот» | Yes |
+| `admin@demo.test` | `ADMIN` | ООО «Демо Оборот» | Yes |
+| `viewer@demo.test` | `VIEWER` | ООО «Демо Оборот» | No (`403`) |
+| `other@demo.test` | `OWNER` | ИП Демо Развитие | Own business only |
+
+**Business ID** values:
+
+| Business | UUID |
+| --- | --- |
+| ООО «Демо Оборот» | `10000000-0000-4000-8000-000000000001` |
+| ИП Демо Развитие | `10000000-0000-4000-8000-000000000002` |
+
+Existing records are matched by email or tax ID; passwords, business details, and roles stay unchanged. The password above applies to new accounts.
+
+## Check application submission
+
+1. As `owner@demo.test`, submit for ООО «Демо Оборот»: `1000000` RUB, `24` months, any purpose and payment frequency, optional collateral. Expect confirmation with an application UUID.
+2. Sign out and repeat as `viewer@demo.test`: submission is denied (`403`).
+3. As `other@demo.test`: the ООО «Демо Оборот» UUID returns `404`; the ИП Демо Развитие UUID allows submission.
+4. Restart normally: verify accounts and applications persist without duplicate sample users or businesses.
+
+## Current limits
+
+Scorer integration is pending; background processing is disabled by default. Applications and queue tasks remain `PENDING`. Acceptance is not a credit decision. Retrying after a lost response may create a duplicate.
+
+## Development settings
+
+IDE or `spring-boot:run` settings:
+
+| Variable | Local value |
+| --- | --- |
+| `SPRING_PROFILES_ACTIVE` | `dev` |
+| `DB_URL` | `jdbc:postgresql://localhost:5433/smartcreditor` |
+| `DB_USER` | `smartcreditor` |
+| `DB_PASSWORD` | `localdev` |
+| `DEMO_DATA_ENABLED` | `true` by default in `dev` |
+
+Seeding requires `dev` and `app.demo-data.enabled=true`; any active `prod` profile disables it. Set `DEMO_DATA_ENABLED=false` to skip seeding and retain existing records.
+
+See [authorization](docs/AUTHORIZATION.md) and [target architecture and planned work](docs/architecture/architecture.md).

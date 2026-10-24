@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
@@ -49,6 +51,12 @@ public class AuthController {
     @ModelAttribute
     public void preventCaching(HttpServletResponse response) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
+    }
+
+    @GetMapping(value = "/auth/csrf", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public CsrfToken csrf(CsrfToken csrfToken) {
+        return csrfToken;
     }
 
     @GetMapping("/login")

@@ -1,5 +1,7 @@
-package dev.ammmmm.hackathon.smartcreditor.backend.config;
+package dev.ammmmm.hackathon.smartcreditor.backend.bootstrap;
 
+import dev.ammmmm.hackathon.smartcreditor.backend.model.Business;
+import dev.ammmmm.hackathon.smartcreditor.backend.model.BusinessAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -16,14 +18,14 @@ import java.util.UUID;
 @Component
 @Profile("dev & !prod")
 @ConditionalOnProperty(name = "app.demo-data.enabled", havingValue = "true")
-public class DevDemoData implements ApplicationRunner {
-    private static final Logger log = LoggerFactory.getLogger(DevDemoData.class);
+public class DevelopmentDataInitializer implements ApplicationRunner {
+    private static final Logger log = LoggerFactory.getLogger(DevelopmentDataInitializer.class);
     private static final String DEMO_PASSWORD = "DemoCredit2026!";
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwords;
 
-    public DevDemoData(JdbcTemplate jdbc, PasswordEncoder passwords) {
+    public DevelopmentDataInitializer(JdbcTemplate jdbc, PasswordEncoder passwords) {
         this.jdbc = jdbc;
         this.passwords = passwords;
     }
@@ -32,28 +34,32 @@ public class DevDemoData implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         UUID firstCompany = ensureBusiness("10000000-0000-4000-8000-000000000001",
-                "LEGAL_ENTITY", "7700000000", "ООО «Демо Оборот»");
+                Business.Type.LEGAL_ENTITY, "7700000000", "ООО «Демо Оборот»");
         UUID secondCompany = ensureBusiness("10000000-0000-4000-8000-000000000002",
-                "INDIVIDUAL_ENTREPRENEUR", "770000000000", "ИП Демо Развитие");
+                Business.Type.INDIVIDUAL_ENTREPRENEUR, "770000000000", "ИП Демо Развитие");
 
         ensureMembership("30000000-0000-4000-8000-000000000001",
-                ensureUser("20000000-0000-4000-8000-000000000001", "owner@demo.test"), firstCompany, "OWNER");
+                ensureUser("20000000-0000-4000-8000-000000000001", "owner@demo.test"),
+                firstCompany, BusinessAccess.Role.OWNER);
         ensureMembership("30000000-0000-4000-8000-000000000002",
-                ensureUser("20000000-0000-4000-8000-000000000002", "admin@demo.test"), firstCompany, "ADMIN");
+                ensureUser("20000000-0000-4000-8000-000000000002", "admin@demo.test"),
+                firstCompany, BusinessAccess.Role.ADMIN);
         ensureMembership("30000000-0000-4000-8000-000000000003",
-                ensureUser("20000000-0000-4000-8000-000000000003", "viewer@demo.test"), firstCompany, "VIEWER");
+                ensureUser("20000000-0000-4000-8000-000000000003", "viewer@demo.test"),
+                firstCompany, BusinessAccess.Role.VIEWER);
         ensureMembership("30000000-0000-4000-8000-000000000004",
-                ensureUser("20000000-0000-4000-8000-000000000004", "other@demo.test"), secondCompany, "OWNER");
+                ensureUser("20000000-0000-4000-8000-000000000004", "other@demo.test"),
+                secondCompany, BusinessAccess.Role.OWNER);
 
         log.info("Development demo accounts are available. Credentials and company UUIDs: README.md");
     }
 
-    private UUID ensureBusiness(String id, String type, String taxId, String name) {
+    private UUID ensureBusiness(String id, Business.Type type, String taxId, String name) {
         jdbc.update("""
                 INSERT INTO "Business" ("id", "type", "taxId", "registeredName")
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT ("taxId") DO NOTHING
-                """, UUID.fromString(id), type, taxId, name);
+                """, UUID.fromString(id), type.name(), taxId, name);
         return jdbc.queryForObject("SELECT \"id\" FROM \"Business\" WHERE \"taxId\" = ?", UUID.class, taxId);
     }
 
@@ -70,11 +76,11 @@ public class DevDemoData implements ApplicationRunner {
         return jdbc.queryForObject("SELECT \"id\" FROM \"User\" WHERE \"email\" = ?", UUID.class, email);
     }
 
-    private void ensureMembership(String id, UUID userId, UUID businessId, String role) {
+    private void ensureMembership(String id, UUID userId, UUID businessId, BusinessAccess.Role role) {
         jdbc.update("""
                 INSERT INTO "BusinessAccess" ("id", "userId", "businessId", "role")
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT ("userId", "businessId") DO NOTHING
-                """, UUID.fromString(id), userId, businessId, role);
+                """, UUID.fromString(id), userId, businessId, role.name());
     }
 }

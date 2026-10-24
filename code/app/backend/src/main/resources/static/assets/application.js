@@ -10,8 +10,18 @@
     const loginLink = document.getElementById("login-again");
     const workspace = document.getElementById("application-workspace");
     const success = document.getElementById("submission-success");
-    const csrfHeader = document.querySelector('meta[name="csrf-header"]').content;
+    const submitLabel = buttonLabel.textContent;
+    const emptySummary = Object.fromEntries(
+        ["amount", "term", "purpose", "collateral"].map(name => [
+            name, document.getElementById(`summary-${name}`).textContent
+        ])
+    );
+    const moneyFormatter = new Intl.NumberFormat(document.documentElement.lang, {
+        style: "currency", currency: "RUB", minimumFractionDigits: 0, maximumFractionDigits: 2
+    });
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validatedFieldNames = ["businessId", "requestedAmount", "termMonths", "financingPurpose", "declaredCollateralValue"];
+    const moneyPattern = /^\d{1,15}(\.\d{1,2})?$/;
     let submitting = false;
     let accepted = false;
 
@@ -22,19 +32,17 @@
     // Keep monetary values as decimal strings; Number can round valid 15-digit amounts.
     function displayMoney(value) {
         const normalized = moneyValue(value);
-        if (!/^\d{1,15}(\.\d{1,2})?$/.test(normalized)) return null;
-        const [integer, fraction] = normalized.split(".");
-        return integer.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, " ")
-            + (fraction ? `,${fraction}` : "") + " ₽";
+        if (!moneyPattern.test(normalized)) return null;
+        return moneyFormatter.format(normalized);
     }
 
     function updateSummary() {
-        document.getElementById("summary-amount").textContent = displayMoney(field("requestedAmount").value) || "— ₽";
-        document.getElementById("summary-term").textContent = field("termMonths").value ? `${field("termMonths").value} мес.` : "Не указан";
+        document.getElementById("summary-amount").textContent = displayMoney(field("requestedAmount").value) || emptySummary.amount;
+        document.getElementById("summary-term").textContent = field("termMonths").value ? `${field("termMonths").value} ${form.dataset.monthsUnit}` : emptySummary.term;
         const purpose = field("financingPurpose");
-        document.getElementById("summary-purpose").textContent = purpose.value ? purpose.selectedOptions[0].textContent : "Не выбрана";
-        document.getElementById("summary-frequency").textContent = field("paymentFrequency").value === "MONTHLY" ? "Ежемесячно" : "Ежеквартально";
-        document.getElementById("summary-collateral").textContent = displayMoney(field("declaredCollateralValue").value) || "Не указана";
+        document.getElementById("summary-purpose").textContent = purpose.value ? purpose.selectedOptions[0].textContent : emptySummary.purpose;
+        document.getElementById("summary-frequency").textContent = form.querySelector('input[name="paymentFrequency"]:checked').closest("label").querySelector("span").textContent;
+        document.getElementById("summary-collateral").textContent = displayMoney(field("declaredCollateralValue").value) || emptySummary.collateral;
     }
 
     function setError(name, message) {
@@ -53,24 +61,24 @@
         const value = input.value.trim();
         let message = "";
         if (name === "businessId") {
-            if (!uuidPattern.test(value)) message = "Введите идентификатор компании в формате UUID.";
+            if (!uuidPattern.test(value)) message = input.dataset.invalidMessage;
         } else if (name === "requestedAmount" || name === "declaredCollateralValue") {
             const normalized = moneyValue(value);
             if (name === "declaredCollateralValue" && !normalized) {
                 setError(name, "");
                 return true;
             }
-            if (!/^\d{1,15}(\.\d{1,2})?$/.test(normalized)) {
-                message = "Введите сумму: до 15 цифр и до двух знаков после запятой.";
+            if (!moneyPattern.test(normalized)) {
+                message = input.dataset.invalidMessage;
             } else if (name === "requestedAmount" && !/[1-9]/.test(normalized)) {
-                message = "Сумма кредита должна быть больше нуля.";
+                message = input.dataset.positiveMessage;
             }
         } else if (name === "termMonths") {
             if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 2147483647) {
-                message = "Укажите срок целым положительным числом месяцев.";
+                message = input.dataset.invalidMessage;
             }
         } else if (name === "financingPurpose" && !value) {
-            message = "Выберите цель финансирования.";
+            message = input.dataset.invalidMessage;
         }
         setError(name, message);
         return !message;
@@ -84,17 +92,23 @@
     }
 
     async function postWithCsrf(url, payload) {
-        // JWT authentication can clear the CSRF cookie. The existing public login
-        // form issues a fresh token without authenticating or changing user data.
-        const loginPage = await fetch(form.dataset.loginUrl, { credentials: "same-origin", cache: "no-store" });
-        if (!loginPage.ok) throw new Error("Unable to load CSRF token");
-        const document = new DOMParser().parseFromString(await loginPage.text(), "text/html");
-        const csrfToken = document.querySelector('input[name="_csrf"]')?.value;
-        if (!csrfToken || !csrfHeader) throw new Error("Missing CSRF token");
+        const response = await fetch(form.dataset.csrfUrl, {
+            credentials: "same-origin", cache: "no-store", headers: {"Accept": "application/json"}
+        });
+        if (!response.ok) throw new Error(`CSRF token request failed: HTTP ${response.status}`);
+        const {headerName, token} = await response.json();
+        if (typeof headerName !== "string" || !headerName || typeof token !== "string" || !token) {
+            throw new Error("Invalid CSRF token response");
+        }
         return fetch(url, {
             method: "POST", credentials: "same-origin",
-            headers: { [csrfHeader]: csrfToken, ...(payload ? { "Content-Type": "application/json", "Accept": "application/json" } : {}) },
-            ...(payload ? { body: JSON.stringify(payload) } : {}),
+            headers: {
+                [headerName]: token, ...(payload ? {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                } : {})
+            },
+            ...(payload ? {body: JSON.stringify(payload)} : {}),
         });
     }
 
@@ -110,7 +124,7 @@
     }
 
     form.noValidate = true;
-    for (const name of ["businessId", "requestedAmount", "termMonths", "financingPurpose", "declaredCollateralValue"]) {
+    for (const name of validatedFieldNames) {
         field(name).addEventListener("blur", () => validateField(name));
         field(name).addEventListener("input", () => {
             if (field(name).getAttribute("aria-invalid") === "true") validateField(name);
@@ -122,7 +136,7 @@
         event.preventDefault();
         if (submitting || accepted) return;
         errorBox.hidden = true;
-        const valid = ["businessId", "requestedAmount", "termMonths", "financingPurpose", "declaredCollateralValue"]
+        const valid = validatedFieldNames
             .map(validateField).every(Boolean);
         if (!valid) {
             form.querySelector('[aria-invalid="true"]').focus();
@@ -136,9 +150,11 @@
             financingPurpose: field("financingPurpose").value,
             declaredCollateralValue: moneyValue(field("declaredCollateralValue").value) || null,
         };
+        const editableFields = [...form.querySelectorAll("input:enabled, select:enabled")];
         submitting = true;
+        for (const input of editableFields) input.disabled = true;
         button.disabled = true;
-        buttonLabel.textContent = "Отправляем…";
+        buttonLabel.textContent = button.dataset.submittingLabel;
         form.setAttribute("aria-busy", "true");
         try {
             const response = await send(payload);
@@ -154,30 +170,32 @@
                 document.querySelector(".status-badge").hidden = true;
                 document.getElementById("success-title").focus();
             } else if (response.status === 401) {
-                showError("Сессия истекла. Войдите в кабинет снова, чтобы отправить заявку.", true);
+                showError(form.dataset.sessionExpired, true);
             } else if (response.status === 403) {
-                showError("Отправка запрещена. Проверьте права владельца или администратора компании. Если права есть, обновите страницу и повторите попытку.");
+                showError(form.dataset.forbidden);
             } else if (response.status === 404) {
-                setError("businessId", "Компания не найдена или у вас нет доступа. Проверьте её идентификатор.");
-                showError("Не удалось найти доступную компанию. Проверьте идентификатор в форме.");
+                setError("businessId", form.dataset.businessUnavailable);
+                showError(form.dataset.businessNotFound);
             } else if (response.status === 400 || response.status === 422) {
-                showError("Сервер не принял данные. Проверьте поля заявки и попробуйте ещё раз.");
+                showError(form.dataset.invalidRequest);
             } else {
-                showError("Не удалось подтвердить приём заявки. Повторная отправка может создать ещё одну заявку.");
+                showError(form.dataset.unconfirmed);
             }
-        } catch {
-            showError("Не удалось получить подтверждение от сервера. Заявка могла сохраниться. Повторная отправка может создать ещё одну заявку.");
+        } catch (error) {
+            console.error("Credit application submission failed", error);
+            showError(form.dataset.networkError);
         } finally {
             submitting = false;
+            for (const input of editableFields) input.disabled = false;
             button.disabled = accepted;
-            buttonLabel.textContent = "Отправить заявку";
+            buttonLabel.textContent = submitLabel;
             form.removeAttribute("aria-busy");
         }
     });
 
     document.getElementById("new-application").addEventListener("click", () => {
         form.reset();
-        for (const name of ["businessId", "requestedAmount", "termMonths", "financingPurpose", "declaredCollateralValue"]) setError(name, "");
+        for (const name of validatedFieldNames) setError(name, "");
         accepted = false;
         button.disabled = false;
         success.hidden = true;
@@ -194,10 +212,11 @@
         logoutButton.disabled = true;
         try {
             const response = await postWithCsrf(logoutUrl);
-            if (!response.ok) throw new Error("Logout failed");
+            if (!response.ok) throw new Error(`Logout failed: HTTP ${response.status}`);
             window.location.assign(form.dataset.loginUrl);
-        } catch {
-            showError("Не удалось выйти из кабинета. Проверьте подключение и повторите попытку.");
+        } catch (error) {
+            console.error("Logout failed", error);
+            showError(form.dataset.logoutError);
             logoutButton.disabled = false;
         }
     });

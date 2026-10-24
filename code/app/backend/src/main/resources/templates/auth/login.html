@@ -1,48 +1,52 @@
 <!doctype html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Вход — Кредитный кабинет</title>
+    <title th:text="#{login.title}"></title>
     <link rel="stylesheet" th:href="@{/assets/cabinet.css}" href="/assets/cabinet.css">
 </head>
 <body class="login-page">
 <header class="login-header">
-    <a class="brand" th:href="@{/login}" href="/login" aria-label="Кредитный кабинет — вход">
+    <a class="brand" th:href="@{/login}" href="/login" th:attr="aria-label=#{brand.loginLabel}">
         <span class="brand-mark" aria-hidden="true">а<span></span></span>
-        <span>Кредитный кабинет<span class="brand-caption">Для предпринимателей</span></span>
+        <span><span th:text="#{brand.name}"></span><span class="brand-caption" th:text="#{brand.caption}"></span></span>
     </a>
+    <nav class="locale-switcher" th:attr="aria-label=#{language.label}">
+        <a th:href="@{/login(lang='ru')}" lang="ru" hreflang="ru"
+           th:attr="aria-current=${#locale.language == 'ru' ? 'true' : null}">RU</a>
+        <a th:href="@{/login(lang='en')}" lang="en" hreflang="en"
+           th:attr="aria-current=${#locale.language == 'en' ? 'true' : null}">EN</a>
+    </nav>
 </header>
 <main class="login-layout">
     <section class="login-intro">
-        <span class="eyebrow"><span class="red-dot"></span> Финансирование бизнеса</span>
-        <h1>Следующий шаг<br>для вашего дела.</h1>
-        <p>Войдите в кабинет, чтобы отправить заявку на финансирование от имени вашей компании.</p>
-        <div class="intro-note"><span class="note-line"></span><span>Ваш бизнес.<br>Ваши планы. Ваш следующий шаг.</span></div>
+        <span class="eyebrow"><span class="red-dot"></span> <span th:text="#{login.eyebrow}"></span></span>
+        <h1><span th:text="#{login.heading.first}"></span><br><span th:text="#{login.heading.second}"></span></h1>
+        <p th:text="#{login.description}"></p>
+        <div class="intro-note"><span class="note-line"></span><span><span th:text="#{login.note.first}"></span><br><span th:text="#{login.note.second}"></span></span></div>
     </section>
     <section class="login-card" aria-labelledby="login-title">
-        <span class="section-number">Личный кабинет</span>
-        <h2 id="login-title">С возвращением</h2>
-        <p class="muted">Введите email и пароль вашей учётной записи.</p>
-        <div th:if="${loginError != null}" class="message message-error" role="alert">
-            Не удалось войти. Проверьте email и пароль и попробуйте ещё раз.
-        </div>
+        <span class="section-number" th:text="#{login.section}"></span>
+        <h2 id="login-title" th:text="#{login.welcome}"></h2>
+        <p class="muted" th:text="#{login.instructions}"></p>
+        <div th:if="${loginError != null}" class="message message-error" role="alert" th:text="#{login.error}"></div>
         <form th:action="@{/login}" action="/login" method="post" class="login-form">
             <div class="field">
-                <label for="email">Email</label>
+                <label for="email" th:text="#{login.email}"></label>
                 <input id="email" name="email" type="email" maxlength="255" autocomplete="username"
-                       placeholder="name@company.ru" required autofocus>
+                       th:placeholder="#{login.emailPlaceholder}" required autofocus>
             </div>
             <div class="field">
-                <label for="password">Пароль</label>
+                <label for="password" th:text="#{login.password}"></label>
                 <input id="password" name="password" type="password" autocomplete="current-password"
-                       placeholder="Введите пароль" required>
+                       th:placeholder="#{login.passwordPlaceholder}" required>
             </div>
-            <button class="button button-primary" type="submit">Войти в кабинет <span aria-hidden="true">↗</span></button>
+            <button class="button button-primary" type="submit"><span th:text="#{login.submit}"></span> <span aria-hidden="true">↗</span></button>
         </form>
-        <p class="login-help">Для входа нужна существующая учётная запись.</p>
+        <p class="login-help" th:text="#{login.help}"></p>
     </section>
 </main>
-<footer class="login-footer">Кредитный кабинет предпринимателя</footer>
+<footer class="login-footer" th:text="#{brand.footer}"></footer>
 </body>
 </html>
