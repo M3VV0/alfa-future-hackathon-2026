@@ -58,6 +58,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
+        "app.demo-data.enabled=false",
         "credit.application.worker.enabled=true", "credit.application.worker.initial-delay-ms=3600000",
         "scorer.token=scoring-test-token", "scorer.retry-delay=PT0S", "scorer.max-attempts=2"
 })
