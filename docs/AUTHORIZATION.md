@@ -46,4 +46,4 @@ All lifecycle commands and callbacks serialize on the same application queue row
 The dev initializer adds missing synthetic accounts, companies and memberships without changing
 existing passwords or roles, unless `DEMO_DATA_ENABLED=false`. It is excluded when `prod` is
 active. The app does not create arbitrary user accounts. An accepted draft or submitted application
-is not a credit approval. No local scoring provider is installed. See [MVP_JAVA.md](MVP_JAVA.md).
+is not a credit approval. The included Python service runs the trained model; no dummy scoring provider is installed. See [MVP_JAVA.md](MVP_JAVA.md).

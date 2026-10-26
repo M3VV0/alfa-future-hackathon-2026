@@ -1,275 +1,69 @@
-"""Tests for scoring and Java callback workers."""
-
+"""Boundary tests: genuine rate interpretation, exact money and callback errors."""
 import json
 import sys
 import unittest
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
-from uuid import UUID
+from uuid import uuid4
 
 import httpx
-from sqlalchemy.dialects import postgresql
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scorer_service.callback_worker import CallbackError, build_callback_payload, encode_callback_payload, send_to_java
+from scorer_service.config import Settings
+from scorer_service.decision import make_callback, normalize_parameters, same_json
+
+PARAMETERS = {"requested_amount": "1000000.50", "currency": "RUB", "term_months": 24,
+    "payment_frequency": "monthly", "financing_purpose": "working_capital", "msp_category": "micro",
+    "applicant_entity_type": "legal_entity", "snapshot_on": "2026-10-26"}
 
 
-SCORER_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(SCORER_DIR))
+class BoundaryTests(unittest.IsolatedAsyncioTestCase):
+    def test_rate_bands_compare_the_unrounded_real_prediction(self):
+        for rate, status in [("11.99999", "DECLINED"), ("12", "OK"), ("24.99999", "OK"),
+                ("25", "OFFER"), ("34.99999", "OFFER"), ("35", "DECLINED")]:
+            with self.subTest(rate=rate):
+                payload = make_callback(uuid4(), PARAMETERS, rate)
+                self.assertEqual(payload["status"], status)
+                self.assertEqual(payload["sum"], "1000000.50")
+        for rate in ["nan", "inf", "-1", "100000", True]:
+            with self.subTest(rate=rate), self.assertRaises(ValueError):
+                make_callback(uuid4(), PARAMETERS, rate)
 
-from scorer_service.callback_worker import (
-    CallbackError,
-    build_callback_payload,
-    dispatch_one,
-    encode_callback_payload,
-    send_to_java,
-)
-from scorer_service.service import ScoringTask
-from scorer_service.worker import ScoringResult, process_one
+    def test_money_is_never_rounded_or_coerced_from_boolean_at_intake(self):
+        result = normalize_parameters({**PARAMETERS, "requested_amount": "1000000.5"})
+        self.assertEqual(result["requested_amount"], "1000000.50")
+        for amount in [True, "0", "-1", "1.001", "nan", "1000000000000000"]:
+            with self.subTest(amount=amount), self.assertRaises(ValueError):
+                normalize_parameters({**PARAMETERS, "requested_amount": amount})
+        with self.assertRaises(ValueError):
+            normalize_parameters({**PARAMETERS, "term_months": True})
+        self.assertFalse(same_json({"a": True}, {"a": 1}))
+        self.assertTrue(same_json({"a": 1}, {"a": 1.0}))
 
+    def test_callback_is_frozen_and_supports_legacy_raw_results(self):
+        task = SimpleNamespace(id=uuid4(), parameters=PARAMETERS)
+        result = SimpleNamespace(result={"interest_rate": 28.56789})
+        payload = build_callback_payload(task, result)
+        self.assertEqual(payload["status"], "OFFER")
+        self.assertEqual(payload["percent"], "28.5679")
+        stored = SimpleNamespace(result={"callback": payload, "interest_rate": 999})
+        self.assertEqual(build_callback_payload(task, stored), payload)
+        self.assertEqual(json.loads(encode_callback_payload(payload))["sum"], "1000000.50")
 
-APPLICATION_ID = UUID("a051d4c4-6f76-4a56-a181-1ddcc6821177")
-PARAMETERS = {
-    "requested_amount": "1000000.50",
-    "currency": "RUB",
-    "term_months": 24,
-}
-
-
-class SessionStub:
-    def __init__(self, task):
-        self.task = task
-        self.statement = None
-        self.added = []
-
-    async def scalar(self, statement):
-        self.statement = statement
-        return self.task
-
-    def add(self, value):
-        self.added.append(value)
-
-
-class SessionFactoryStub:
-    def __init__(self, session):
-        self.session = session
-        self.transaction_finished = False
-
-    def begin(self):
-        factory = self
-
-        class Transaction:
-            async def __aenter__(self):
-                return factory.session
-
-            async def __aexit__(self, exc_type, exc_value, traceback):
-                factory.transaction_finished = True
-
-        return Transaction()
-
-
-class CallbackSessionStub:
-    def __init__(self, stored, task=None):
-        self.stored = stored
-        self.task = task
-        self.statement = None
-        self.get_calls = []
-
-    async def scalar(self, statement):
-        self.statement = statement
-        return self.stored
-
-    async def get(self, model, application_id):
-        self.get_calls.append((model, application_id))
-        return self.task
-
-
-class WorkerTests(unittest.IsolatedAsyncioTestCase):
-    async def test_successful_task_is_locked_scored_and_saved(self):
-        task = SimpleNamespace(
-            id=APPLICATION_ID,
-            parameters=PARAMETERS,
-            status="PENDING",
-        )
-        session = SessionStub(task)
-        sessions = SessionFactoryStub(session)
-        scorer = SimpleNamespace(predict=AsyncMock(return_value=17.5))
-
-        processed = await process_one(sessions, scorer)
-
-        self.assertTrue(processed)
-        scorer.predict.assert_awaited_once_with(PARAMETERS)
-        self.assertEqual(task.status, "SUCCEEDED")
-        self.assertTrue(sessions.transaction_finished)
-        self.assertEqual(len(session.added), 1)
-        result = session.added[0]
-        self.assertIsInstance(result, ScoringResult)
-        self.assertEqual(result.application_id, APPLICATION_ID)
-        self.assertEqual(result.result, {"interest_rate": 17.5})
-
-        sql = str(session.statement.compile(dialect=postgresql.dialect()))
-        self.assertIn("FOR UPDATE SKIP LOCKED", sql)
-        self.assertIn("scoring_queue.status", sql)
-
-    async def test_empty_queue_does_not_call_scorer(self):
-        session = SessionStub(task=None)
-        sessions = SessionFactoryStub(session)
-        scorer = SimpleNamespace(predict=AsyncMock())
-
-        processed = await process_one(sessions, scorer)
-
-        self.assertFalse(processed)
-        scorer.predict.assert_not_awaited()
-        self.assertEqual(session.added, [])
-        self.assertTrue(sessions.transaction_finished)
-
-    async def test_prediction_failure_marks_task_failed_without_result(self):
-        task = SimpleNamespace(
-            id=APPLICATION_ID,
-            parameters=PARAMETERS,
-            status="PENDING",
-        )
-        session = SessionStub(task)
-        sessions = SessionFactoryStub(session)
-        scorer = SimpleNamespace(
-            predict=AsyncMock(side_effect=ValueError("invalid request"))
-        )
-
-        with self.assertLogs("scorer_service.worker", level="ERROR"):
-            processed = await process_one(sessions, scorer)
-
-        self.assertTrue(processed)
-        self.assertEqual(task.status, "FAILED")
-        self.assertEqual(session.added, [])
-        self.assertTrue(sessions.transaction_finished)
-
-
-class CallbackWorkerTests(unittest.IsolatedAsyncioTestCase):
-    def task(self):
-        return SimpleNamespace(id=APPLICATION_ID, parameters=PARAMETERS)
-
-    def stored(self, interest_rate=17.56789):
-        return SimpleNamespace(
-            application_id=APPLICATION_ID,
-            result={"interest_rate": interest_rate},
-            delivery_status="PENDING",
-            sent_at=None,
-        )
-
-    def test_builds_exact_java_contract_and_numeric_json(self):
-        payload = build_callback_payload(self.task(), self.stored(), "OFFER")
-
-        self.assertEqual(
-            payload,
-            {
-                "status": "OFFER",
-                "months": 24,
-                "percent": Decimal("17.5679"),
-                "sum": Decimal("1000000.50"),
-                "id": str(APPLICATION_ID),
-            },
-        )
-        encoded = encode_callback_payload(payload)
-        decoded = json.loads(encoded)
-        self.assertEqual(
-            set(decoded), {"status", "months", "percent", "sum", "id"}
-        )
-        self.assertIsInstance(decoded["percent"], float)
-        self.assertIsInstance(decoded["sum"], float)
-
-    def test_rejects_missing_business_status_and_invalid_values(self):
-        with self.assertRaisesRegex(ValueError, "SCORER_SUCCESS_STATUS"):
-            build_callback_payload(self.task(), self.stored(), "")
-        with self.assertRaisesRegex(ValueError, "interest_rate"):
-            build_callback_payload(self.task(), self.stored(-1), "OK")
-
-    async def test_unsent_result_is_locked_delivered_and_marked_sent(self):
-        stored = self.stored()
-        task = self.task()
-        session = CallbackSessionStub(stored, task)
-        sessions = SessionFactoryStub(session)
-        sender = AsyncMock()
-
-        processed = await dispatch_one(sessions, sender, "OFFER")
-
-        self.assertTrue(processed)
-        self.assertTrue(sessions.transaction_finished)
-        self.assertIsNotNone(stored.sent_at)
-        self.assertEqual(stored.delivery_status, "SENT")
-        self.assertEqual(
-            session.get_calls,
-            [(ScoringTask, APPLICATION_ID)],
-        )
-        sender.assert_awaited_once()
-        sql = str(session.statement.compile(dialect=postgresql.dialect()))
-        self.assertIn("scoring_result.delivery_status", sql)
-        self.assertIn("FOR UPDATE SKIP LOCKED", sql)
-
-    async def test_empty_result_queue_does_not_send(self):
-        session = CallbackSessionStub(stored=None)
-        sessions = SessionFactoryStub(session)
-        sender = AsyncMock()
-
-        processed = await dispatch_one(sessions, sender, "OFFER")
-
-        self.assertFalse(processed)
-        sender.assert_not_awaited()
-        self.assertTrue(sessions.transaction_finished)
-
-    async def test_failed_delivery_remains_unsent_for_retry(self):
-        stored = self.stored()
-        session = CallbackSessionStub(stored, self.task())
-        sessions = SessionFactoryStub(session)
-        sender = AsyncMock(side_effect=CallbackError("HTTP 503"))
-
-        with self.assertRaises(CallbackError):
-            await dispatch_one(sessions, sender, "OFFER")
-
-        self.assertIsNone(stored.sent_at)
-        self.assertEqual(stored.delivery_status, "PENDING")
-        self.assertTrue(sessions.transaction_finished)
-
-    async def test_invalid_stored_result_is_failed_without_http_request(self):
-        stored = self.stored(-1)
-        session = CallbackSessionStub(stored, self.task())
-        sessions = SessionFactoryStub(session)
-        sender = AsyncMock()
-
-        with self.assertLogs("scorer_service.callback_worker", level="ERROR"):
-            processed = await dispatch_one(sessions, sender, "OFFER")
-
-        self.assertTrue(processed)
-        self.assertEqual(stored.delivery_status, "FAILED")
-        self.assertIsNone(stored.sent_at)
-        sender.assert_not_awaited()
-
-    async def test_http_sender_uses_token_client_and_requires_204(self):
+    async def test_http_sender_keeps_the_exact_callback_and_requires_204(self):
         requests = []
-
-        def accepted(request):
-            requests.append(request)
-            return httpx.Response(204)
-
-        payload = build_callback_payload(self.task(), self.stored(), "OFFER")
-        async with httpx.AsyncClient(
-            base_url="http://java",
-            headers={"X-Scorer-Token": "secret"},
-            transport=httpx.MockTransport(accepted),
-        ) as client:
-            await send_to_java(client, payload)
-
-        self.assertEqual(requests[0].url.path, "/scored")
+        async with httpx.AsyncClient(base_url="http://java", headers={"X-Scorer-Token": "secret"},
+                transport=httpx.MockTransport(lambda req: requests.append(req) or httpx.Response(204))) as client:
+            await send_to_java(client, make_callback(uuid4(), PARAMETERS, 20))
         self.assertEqual(requests[0].headers["X-Scorer-Token"], "secret")
-        self.assertEqual(
-            json.loads(requests[0].content),
-            json.loads(encode_callback_payload(payload)),
-        )
+        self.assertEqual(requests[0].url.path, "/scored")
+        async with httpx.AsyncClient(base_url="http://java", transport=httpx.MockTransport(lambda req: httpx.Response(409))) as client:
+            with self.assertRaises(CallbackError):
+                await send_to_java(client, make_callback(uuid4(), PARAMETERS, 20))
 
-        async with httpx.AsyncClient(
-            base_url="http://java",
-            transport=httpx.MockTransport(lambda request: httpx.Response(409)),
-        ) as client:
-            with self.assertRaisesRegex(CallbackError, "HTTP 409"):
-                await send_to_java(client, payload)
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_invalid_worker_configuration_fails_before_start(self):
+        for changes in [{"lease_seconds": 1}, {"max_attempts": 0}, {"poll_seconds": float("nan")},
+                        {"schema": "unsafe;drop"}, {"java_base_url": "file:///tmp"}]:
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                Settings(**changes)

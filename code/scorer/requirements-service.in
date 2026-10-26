@@ -1,0 +1,14 @@
+# Inference versions match the exported model's training environment.
+numpy==2.5.4
+pandas==3.0.6
+scipy==1.18.1
+scikit-learn==1.9.1
+catboost==1.2.10
+joblib==1.6.0
+threadpoolctl==3.7.0
+fastapi==0.146.0
+pydantic==2.13.4
+SQLAlchemy[asyncio]==2.0.55
+asyncpg==0.32.0
+uvicorn==0.53.0
+httpx==0.28.1

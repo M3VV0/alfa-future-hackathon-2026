@@ -18,7 +18,9 @@ from scorer_service.service import ScoringTask, create_app, enqueue
 
 APPLICATION_ID = "a051d4c4-6f76-4a56-a181-1ddcc6821177"
 TOKEN = "test-scorer-token"
-PARAMETERS = {"requested_amount": "1000000.50", "currency": "RUB"}
+PARAMETERS = {"requested_amount": "1000000.50", "currency": "RUB", "term_months": 24,
+    "payment_frequency": "monthly", "financing_purpose": "working_capital", "msp_category": "micro",
+    "applicant_entity_type": "legal_entity", "snapshot_on": "2026-10-26"}
 
 
 class ResultStub:
@@ -97,7 +99,7 @@ class EnqueueTests(unittest.IsolatedAsyncioTestCase):
         }
         session = SessionStub(
             inserted=None,
-            existing=SimpleNamespace(parameters=existing_parameters),
+            existing=SimpleNamespace(status="PENDING", parameters=existing_parameters),
         )
         factory = SessionFactoryStub(session)
 
@@ -115,7 +117,7 @@ class EnqueueTests(unittest.IsolatedAsyncioTestCase):
     async def test_duplicate_id_with_different_json_is_rejected(self):
         session = SessionStub(
             inserted=None,
-            existing=SimpleNamespace(parameters={"currency": "USD"}),
+            existing=SimpleNamespace(status="PENDING", parameters={"currency": "USD"}),
         )
         factory = SessionFactoryStub(session)
 
@@ -160,16 +162,16 @@ class ScorerApiTests(unittest.TestCase):
         self.assertIn("ON CONFLICT", str(factory.session.statement))
 
     def test_duplicate_payload_is_accepted_but_different_payload_conflicts(self):
-        parameters = {"currency": "RUB"}
+        parameters = PARAMETERS.copy()
         same, _ = client(
             SessionStub(
-                inserted=None, existing=SimpleNamespace(parameters=parameters)
+                inserted=None, existing=SimpleNamespace(status="PENDING", parameters=parameters)
             )
         )
         different, _ = client(
             SessionStub(
                 inserted=None,
-                existing=SimpleNamespace(parameters={"currency": "USD"}),
+                existing=SimpleNamespace(status="PENDING", parameters={"currency": "USD"}),
             )
         )
 
@@ -234,7 +236,7 @@ class ScorerApiTests(unittest.TestCase):
         with self.assertLogs("scorer_service.service", level="ERROR"), api:
             response = api.post(
                 "/request",
-                json={"id": APPLICATION_ID, "parameters": {"currency": "RUB"}},
+                json={"id": APPLICATION_ID, "parameters": PARAMETERS},
                 headers={"X-Scorer-Token": TOKEN},
             )
 

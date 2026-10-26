@@ -206,6 +206,24 @@ class CreditCabinetTests {
         assertEquals("OFFERED", cabinet.view(owner, failed).get("state"));
     }
 
+    @Test void technicalRetryKeepsInputAndAcceptsALateResultBeforeRedispatch() throws Exception {
+        UUID id = submitted();
+        doThrow(new RestClientException("unavailable")).when(scorer).submit(any());
+        scoring.processNext(); scoring.processNext();
+        String snapshot = json.writeValueAsString(tasks.findById(id).orElseThrow().getRequestPayload());
+        assertEquals("FAILED", cabinet.view(owner, id).get("state"));
+        denied(() -> cabinet.action(viewer, id, "retry"), 403);
+        cabinet.action(owner, id, "retry");
+        cabinet.action(owner, id, "retry");
+        assertEquals("SUBMITTED", cabinet.view(owner, id).get("state"));
+        assertEquals(0, tasks.findById(id).orElseThrow().getAttempts());
+        assertTrue(tasks.findById(id).orElseThrow().hasBeenDispatched());
+        assertEquals(snapshot, json.writeValueAsString(tasks.findById(id).orElseThrow().getRequestPayload()));
+        callback(id, "OK");
+        assertEquals("OFFERED", cabinet.view(owner, id).get("state"));
+        denied(() -> cabinet.action(owner, id, "retry"), 409);
+    }
+
     @Test void cancelledApplicationsCannotBeReopenedByALateCallback() throws Exception {
         UUID id = submitted(); scoring.processNext(); cabinet.action(owner, id, "cancel");
         mvc.perform(post("/scored").header("X-Scorer-Token", "cabinet-test-token").contentType("application/json")

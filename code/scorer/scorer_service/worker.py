@@ -1,106 +1,57 @@
-"""PostgreSQL worker that runs queued requests through the scoring model."""
-
+"""Bounded model worker: release database locks before actual inference."""
 import asyncio
 import logging
-import os
-from datetime import datetime
-from typing import Any
-from uuid import UUID
-
-from sqlalchemy import DateTime, ForeignKey, String, func, select, text
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column
-
+from copy import deepcopy
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+from sqlalchemy import select
 from scorer import Scorer
-from scorer_service.service import Base, ScoringTask
-
+from scorer_service.config import Settings
+from scorer_service.decision import VERSION, make_callback
+from scorer_service.storage import Base, ScoringTask, ScoringResult
 
 log = logging.getLogger(__name__)
 
 
-class ScoringResult(Base):
-    __tablename__ = "scoring_result"
-
-    application_id: Mapped[UUID] = mapped_column(
-        ForeignKey("scoring_queue.id", ondelete="CASCADE"), primary_key=True
-    )
-    result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    delivery_status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=text("'PENDING'")
-    )
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-async def process_one(
-    sessions: async_sessionmaker[AsyncSession], scorer: Scorer
-) -> bool:
-    """Process one available task and return whether a task was found."""
-    statement = (
-        select(ScoringTask)
-        .where(ScoringTask.status == "PENDING")
-        .order_by(ScoringTask.created_at, ScoringTask.id)
-        .limit(1)
-        .with_for_update(skip_locked=True)
-    )
-
+async def process_one(sessions, scorer: Scorer, settings: Settings | None = None) -> bool:
+    settings = settings or Settings.from_env()
+    now = datetime.now(timezone.utc)
     async with sessions.begin() as session:
-        task = await session.scalar(statement)
+        task = await session.scalar(select(ScoringTask)
+            .where(ScoringTask.status.in_(["PENDING", "PROCESSING"]), ScoringTask.next_attempt_at <= now)
+            .order_by(ScoringTask.next_attempt_at, ScoringTask.created_at, ScoringTask.id)
+            .limit(1).with_for_update(skip_locked=True))
         if task is None:
             return False
-
-        try:
-            interest_rate = await scorer.predict(task.parameters)
-        except Exception:
-            task.status = "FAILED"
-            log.exception("Scoring failed for application %s", task.id)
+        if task.attempts >= settings.max_attempts:
+            task.status, task.last_error = "FAILED", "PREDICTION_ATTEMPTS_EXHAUSTED"
             return True
-
-        session.add(
-            ScoringResult(
-                application_id=task.id,
-                result={"interest_rate": interest_rate},
-            )
-        )
-        task.status = "SUCCEEDED"
-        return True
-
-
-async def main() -> None:
-    database_url = os.getenv(
-        "SCORER_DATABASE_URL",
-        "postgresql+asyncpg://smartcreditor:localdev@localhost:5432/smartcreditor",
-    )
-    if not database_url.startswith("postgresql+asyncpg://"):
-        raise RuntimeError("SCORER_DATABASE_URL must use postgresql+asyncpg")
-
-    poll_seconds = float(os.getenv("SCORER_WORKER_POLL_SECONDS", "1"))
-    if poll_seconds <= 0:
-        raise RuntimeError("SCORER_WORKER_POLL_SECONDS must be positive")
-
-    engine = create_async_engine(database_url, pool_pre_ping=True)
-    sessions = async_sessionmaker(engine, expire_on_commit=False)
-    scorer = Scorer()
-
+        task.status, task.lease_token = "PROCESSING", uuid4()
+        task.attempts += 1
+        task.next_attempt_at = now + timedelta(seconds=settings.lease_seconds)
+        application_id, token, parameters = task.id, task.lease_token, deepcopy(task.parameters)
+    error, result = None, None
     try:
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-
-        while True:
-            try:
-                processed = await process_one(sessions, scorer)
-            except SQLAlchemyError:
-                log.exception("Scoring worker database error")
-                processed = False
-            if not processed:
-                await asyncio.sleep(poll_seconds)
-    finally:
-        await engine.dispose()
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+        prediction = await asyncio.wait_for(scorer.predict(parameters), timeout=settings.prediction_timeout)
+        result = {"interest_rate": prediction, "callback": make_callback(application_id, parameters, prediction),
+                  "model_version": getattr(scorer, "model_version", "unspecified"), "decision_version": VERSION}
+    except (ValueError, TypeError):
+        error = "INVALID_PREDICTION"
+    except TimeoutError:
+        error = "PREDICTION_TIMEOUT"
+    except Exception:
+        error = "PREDICTION_UNAVAILABLE"
+    async with sessions.begin() as session:
+        task = await session.get(ScoringTask, application_id, with_for_update=True)
+        if task.lease_token != token or task.status != "PROCESSING":
+            return True
+        task.lease_token = None
+        if error:
+            task.last_error = error
+            task.status = "FAILED" if error == "INVALID_PREDICTION" or task.attempts >= settings.max_attempts else "PENDING"
+            task.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=settings.retry_seconds)
+            log.error("Scoring failed: application=%s code=%s", application_id, error)
+        else:
+            session.add(ScoringResult(application_id=application_id, result=result))
+            task.status, task.last_error = "SUCCEEDED", None
+    return True

@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: smartcreditor
       POSTGRES_PASSWORD: localdev
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,11 +24,29 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/smartcreditor
       DB_USER: smartcreditor
       DB_PASSWORD: localdev
-      SCORER_ENABLED: ${SCORER_ENABLED:-false}
-      SCORER_BASE_URL: ${SCORER_BASE_URL:-http://host.docker.internal:8000}
-      SCORER_TOKEN: ${SCORER_TOKEN:-}
+      SCORER_ENABLED: ${SCORER_ENABLED:-true}
+      SCORER_BASE_URL: ${SCORER_BASE_URL:-http://scorer:8000}
+      SCORER_TOKEN: ${SCORER_TOKEN:-local-review-scorer-token}
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      scorer:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scorer:
+    profiles: [app, scoring]
+    build: ./code/scorer
+    environment:
+      SCORER_DATABASE_URL: postgresql+asyncpg://smartcreditor:localdev@postgres:5432/smartcreditor
+      SCORER_TOKEN: ${SCORER_TOKEN:-local-review-scorer-token}
+      JAVA_BASE_URL: ${JAVA_BASE_URL:-http://app:8080}
+    ports:
+      - "127.0.0.1:${SCORER_PORT:-8000}:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

@@ -1,0 +1,8 @@
+{
+  "inn": "7700000000",
+  "financials": {
+    "monthlyRevenue": "1000000.00",
+    "monthlyExpenses": "600000.00",
+    "existingMonthlyPayment": "10000.00"
+  }
+}

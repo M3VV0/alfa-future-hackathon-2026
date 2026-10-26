@@ -24,13 +24,22 @@ their respective licenses are supplied with their distributions.
 No CDN or paid API is required by the Java cabinet. HTML, CSS and JavaScript
 assets are repository-local; fonts fall back to installed system fonts.
 
-Existing Python research files and model artifacts are retained unchanged.
-Their dependencies and versions are listed in code/scorer/requirements.txt;
-NumPy, pandas, SciPy, scikit-learn, joblib and threadpoolctl use BSD-style
-licenses; CatBoost uses Apache License 2.0; Matplotlib uses its own BSD-compatible
-license; notebook tools use their upstream licenses. They are not installed or
-executed by the Java Docker build. The existing model is not a component of the
-Java runtime until a separate Python service is supplied.
+Python 3.13.7, FastAPI 0.146.0 (MIT), Pydantic 2.13.4 (MIT),
+SQLAlchemy 2.0.55 (MIT), asyncpg 0.32.0 (Apache 2.0), Uvicorn 0.53.0
+(BSD 3-Clause), httpx 0.28.1 (BSD 3-Clause), greenlet 3.5.6 (MIT/Python),
+CatBoost 1.2.10 (Apache 2.0), NumPy 2.5.4, pandas 3.0.6,
+SciPy 1.18.1, scikit-learn 1.9.1, joblib 1.6.0 and threadpoolctl 3.7.0
+(BSD-style upstream licenses). Transitive runtime components and artifact hashes
+are fixed in code/scorer/requirements-service.lock. Matplotlib and its upstream
+license/notices are included as CatBoost dependencies. No notebook execution or
+training dependencies beyond the selected inference stack are required at startup.
+
+Model: selected CatBoost regressor, trained by the project on synthetic company
+applications. The delivery rebuild uses the existing selected configuration and
+8,000-row development split; the 2,000-row reused holdout is diagnostic only.
+Source, feature/data hashes and measured diagnostic error are recorded in
+code/scorer/artifacts/selected_model.validation.json. This is not a real default
+probability model or independently validated banking decision system.
 
 Data: development accounts, companies, report examples and test fixtures are
 synthetic project data. No real customer, bureau or bank records are included.
@@ -38,8 +47,8 @@ Development RSA keys and demo passwords are public test fixtures, not production
 credentials.
 
 Integrations and simplifications:
-- Python scorer: external HTTP contract only. No local provider, generated score,
-  runtime callback simulator or fallback model is included.
+- Python scorer: supplied FastAPI service applies the real saved CatBoost model.
+  No dummy provider, generated scoring answer or fallback model is included.
 - EGRUL/EGRIP, FNS and credit bureaus: no live or simulated external calls in the
   Java branch. Company profile fields are declared information, not verified
   source responses. Future integration must preserve this distinction.

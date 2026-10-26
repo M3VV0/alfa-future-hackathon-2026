@@ -158,7 +158,7 @@ public class CreditApplicationService {
             }
             return;
         }
-        if (task.getAttempts() == 0) {
+        if (!task.hasBeenDispatched()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Application has not been dispatched");
         }
         Instant now = Instant.now();

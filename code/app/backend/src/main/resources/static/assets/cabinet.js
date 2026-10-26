@@ -20,6 +20,7 @@
         FINANCIAL_REPORT_REQUIRED: ["Загрузите финансовый отчёт по шаблону.", "Upload a financial report using the template."],
         REPORT_MISMATCH: ["ИНН и показатели в отчёте должны совпадать с компанией и заявкой.", "The report tax ID and financial figures must match the company and application."],
         AWAITING_SCORER: ["Дополнительных действий не требуется. Результат появится здесь после рассмотрения.", "No further action is needed. Your result will appear here after review."],
+        RETRY_REQUESTED: ["Повторное рассмотрение запрошено. Результат появится здесь.", "Review retry requested. The result will appear here."],
         SCORING: ["Заявка рассматривается. Статус обновляется автоматически.", "Your application is being reviewed. Status updates automatically."],
         SCORER_DECLINED: ["По результатам оценки финансирование не предложено.", "Financing was not offered following assessment."],
         BUSINESS_NOT_ACTIVE: ["Компания должна иметь действующий статус.", "The company must have active registration status."],
@@ -120,6 +121,7 @@
                 download.addEventListener("click", () => { try { template(view, companies); } catch (failure) { error(failure); } });
                 card.append(download);
             }
+            if (view.state === "FAILED") actions.append(button(text("Повторить рассмотрение", "Retry review"), () => action("retry")));
             if (view.state === "OFFERED") actions.append(button(text("Принять условия", "Accept offer"), () => action("accept")), button(text("Отказаться", "Decline offer"), () => action("decline")));
             if (view.state === "ACCEPTED") actions.append(button(text("Имитировать подписание", "Simulate signing"), () => action("sign")));
             if (view.state === "SIGNED_SIMULATED") actions.append(button(text("Имитировать выдачу", "Simulate disbursement"), () => action("disburse")));

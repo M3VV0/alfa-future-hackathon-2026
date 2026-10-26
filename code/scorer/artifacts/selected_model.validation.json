@@ -1,0 +1,54 @@
+{
+  "spec": {
+    "name": "anchor_engineered",
+    "kind": "catboost",
+    "features": "engineered",
+    "params": {
+      "iterations": 1000,
+      "depth": 6,
+      "learning_rate": 0.05,
+      "l2_leaf_reg": 3.0,
+      "random_strength": 1.0,
+      "rsm": 1.0
+    }
+  },
+  "feature_columns": [
+    "requested_amount",
+    "term_months",
+    "declared_collateral_value",
+    "average_headcount",
+    "registration_age",
+    "payment_frequency",
+    "financing_purpose",
+    "msp_category",
+    "applicant_entity_type",
+    "coverage",
+    "collateral_missing",
+    "headcount_missing",
+    "headcount_zero",
+    "annual_principal",
+    "period_principal",
+    "amount_per_employee",
+    "annual_principal_per_employee",
+    "log_amount",
+    "log_collateral"
+  ],
+  "feature_version": 3,
+  "feature_source_sha256": "c1ee043e42c6dd97c744d6559e90bfa73afa43a5f4f4b288e72529a028132b65",
+  "data_sha256": "398fe15dcca1920b01d3393ae49010933ef760ad511f63aa447f2c98f638cd99",
+  "training_scope": "8000 development rows; selected-configuration rebuild",
+  "seed": 20261022,
+  "train_rows": 8000,
+  "diagnostic_rows": 2000,
+  "diagnostic_status": "reused synthetic holdout; no independent risk validation",
+  "artifact_sha256": "e56eb60776f3874b262ceb2a2b6afb91df198d60d41d35313ad3357ab4d1f2b1",
+  "rmse_percentage_points": 0.8816811525843069,
+  "mae_percentage_points": 0.6291293756583414,
+  "versions": {
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "scikit-learn": "1.9.1",
+    "catboost": "1.2.10",
+    "joblib": "1.6.0"
+  }
+}

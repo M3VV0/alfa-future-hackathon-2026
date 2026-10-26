@@ -200,7 +200,7 @@ paths:
       - name: action
         in: path
         required: true
-        schema: {type: string, enum: [accept, decline, sign, disburse, cancel]}
+        schema: {type: string, enum: [accept, decline, sign, disburse, cancel, retry]}
     post:
       operationId: actOnApplication
       security: [{accessCookie: [], csrfHeader: []}]
