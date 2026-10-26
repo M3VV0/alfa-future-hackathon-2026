@@ -93,6 +93,10 @@ public class CreditApplicationTask {
         return nextAttemptAt;
     }
 
+    public void pause() {
+        status = Status.WAITING_INPUT;
+    }
+
     public void claim(Instant now, Instant leaseExpiresAt) {
         status = Status.PROCESSING;
         attempts++;
@@ -127,6 +131,7 @@ public class CreditApplicationTask {
     }
 
     public enum Status {
+        WAITING_INPUT,
         PENDING,
         PROCESSING,
         AWAITING_RESULT,

@@ -7,6 +7,7 @@
     <meta name="csrf-header" th:content="${_csrf.headerName}">
     <title th:text="#{application.title}"></title>
     <link rel="stylesheet" th:href="@{/assets/cabinet.css}" href="/assets/cabinet.css">
+    <script th:src="@{/assets/credit-api.js}" src="/assets/credit-api.js" defer></script>
     <script th:src="@{/assets/application.js}" src="/assets/application.js" defer></script>
 </head>
 <body>
@@ -22,6 +23,8 @@
             <a class="nav-item active" th:href="@{/app}" href="/app" aria-current="page">
                 <span class="nav-icon" aria-hidden="true">↗</span> <span th:text="#{application.heading}"></span>
             </a>
+            <a class="nav-item" th:href="@{/app/applications}" th:text="#{cabinet.applications}"></a>
+            <a class="nav-item" th:href="@{/app/companies}" th:text="#{cabinet.companies}"></a>
         </nav>
         <div class="sidebar-bottom">
             <p><span th:text="#{application.sidebarNote.first}"></span><br><strong th:text="#{application.sidebarNote.second}"></strong></p>
@@ -56,8 +59,8 @@
             </div>
 
             <div id="application-workspace" class="application-workspace">
-                <form id="application-form" class="application-card" th:action="@{/api/credit/application/submit}"
-                      action="/api/credit/application/submit" method="post"
+                <form id="application-form" class="application-card" th:action="@{/api/credit/applications}"
+                      action="/api/credit/applications" method="post"
                       th:attr="data-refresh-url=@{/auth/refresh},data-login-url=@{/login},data-csrf-url=@{/auth/csrf},
                                data-months-unit=#{unit.months},
                                data-session-expired=#{error.sessionExpired},
@@ -73,10 +76,8 @@
                             <p th:text="#{application.companyDescription}"></p></div></div>
                         <div class="field">
                             <label for="businessId" th:text="#{application.businessId}"></label>
-                            <input id="businessId" name="businessId" type="text" required spellcheck="false" autocomplete="off"
-                                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" maxlength="36"
-                                   pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-                                   aria-describedby="business-hint businessId-error" th:attr="data-invalid-message=#{validation.businessId}">
+                            <select id="businessId" name="businessId" required aria-describedby="business-hint businessId-error"
+                                    th:attr="data-invalid-message=#{validation.businessId}"><option value="" th:text="#{cabinet.loading}"></option></select>
                             <span id="business-hint" class="field-hint" th:text="#{application.businessHint}"></span>
                             <span id="businessId-error" class="field-error" hidden></span>
                         </div>
@@ -85,6 +86,11 @@
                         <div class="section-heading"><span class="section-index">02</span><div><h2 id="parameters-title" th:text="#{application.parameters}"></h2>
                             <p th:text="#{application.parametersDescription}"></p></div></div>
                         <div class="form-grid">
+                            <div class="field field-wide">
+                                <label for="productId" th:text="#{cabinet.product}"></label>
+                                <select id="productId" name="productId" required></select>
+                                <span class="field-hint" id="product-terms"></span>
+                            </div>
                             <div class="field">
                                 <label for="requestedAmount" th:text="#{application.amount}"></label>
                                 <div class="input-with-unit"><input id="requestedAmount" name="requestedAmount" type="text"
@@ -133,6 +139,15 @@
                             <span id="declaredCollateralValue-error" class="field-error" hidden></span>
                         </div>
                     </section>
+                    <section class="form-section">
+                        <div class="section-heading"><span class="section-index">04</span><div><h2 th:text="#{cabinet.financials}"></h2>
+                            <p th:text="#{cabinet.financialHint}"></p></div></div>
+                        <div class="form-grid">
+                            <div class="field"><label for="monthlyRevenue" th:text="#{cabinet.revenue}"></label><input id="monthlyRevenue" name="monthlyRevenue" inputmode="decimal" placeholder="1 000 000"></div>
+                            <div class="field"><label for="monthlyExpenses" th:text="#{cabinet.expenses}"></label><input id="monthlyExpenses" name="monthlyExpenses" inputmode="decimal" placeholder="600 000"></div>
+                            <div class="field"><label for="existingMonthlyPayment" th:text="#{cabinet.obligations}"></label><input id="existingMonthlyPayment" name="existingMonthlyPayment" inputmode="decimal" placeholder="0"></div>
+                        </div>
+                    </section>
                     <div class="form-footer"><span class="field-hint" th:text="#{application.check}"></span>
                         <button id="submit-button" class="button button-primary" type="submit" disabled
                                 th:attr="data-submitting-label=#{application.submitting}">
@@ -154,14 +169,6 @@
                 </aside>
             </div>
 
-            <section id="submission-success" class="success-card" aria-labelledby="success-title" hidden>
-                <span class="success-icon" aria-hidden="true">✓</span>
-                <span class="eyebrow" th:text="#{success.saved}"></span><h2 id="success-title" tabindex="-1" th:text="#{success.accepted}"></h2>
-                <p class="muted" th:text="#{success.description}"></p>
-                <div class="receipt"><span th:text="#{success.id}"></span><strong id="application-id"></strong></div>
-                <p class="field-hint" th:text="#{success.hint}"></p>
-                <button id="new-application" class="button button-secondary" type="button"><span th:text="#{success.new}"></span> <span aria-hidden="true">↗</span></button>
-            </section>
             <footer class="page-footer"><span th:text="#{brand.footer}"></span><span th:text="#{application.footer}"></span></footer>
         </main>
     </div>

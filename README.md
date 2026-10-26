@@ -1,71 +1,112 @@
-# Business Credit Portal
+# Business Credit Portal — Java MVP
 
-Small-business credit portal prototype with sign-in, company access checks, and applications stored in PostgreSQL. Web UI: Spring Boot/Thymeleaf (RU/EN). Standalone Python rate estimator: `code/scorer`.
+Кредитный кабинет малого бизнеса: компании и права доступа, продукты, черновики,
+финансовые отчёты, отправка заявки, статусы, история и жизненный цикл предложения.
+Spring Boot 4.1.1 / Java 21 / Thymeleaf / PostgreSQL / Flyway.
 
-## Run locally
+**Python-сервис будет подключён отдельно. Локального скоринга, демо-ответов и
+резервной модели нет.** При выключенном обработчике полная заявка ожидает
+рассмотрения в `SUBMITTED`; решения не генерируются.
 
-Requires JDK 21+ and running Docker with Compose. First build needs Maven Central access; Maven is downloaded by the wrapper. Run from the repository root.
+## Запуск одной командой
 
-| Platform | Start | Reset database and start |
-| --- | --- | --- |
-| macOS / Linux | `sh ./start_dev.sh` | `sh ./start_dev_clean.sh` |
-| Windows (cmd) | `start_dev.bat` | `start_dev_clean.bat` |
-
-Scripts start PostgreSQL (`5433`), build and test the backend, then run it on `8080` with the `dev` profile. Flyway applies migrations; missing sample accounts, businesses, and memberships are added. Normal startup preserves data.
-
-[Sign in](http://localhost:8080/login) · [Application form](http://localhost:8080/app) (after sign-in) · [Health check](http://localhost:8080/api/health) (`OK`).
-
-**Reset deletes all dev data, including applications, accounts, and password changes**, then runs normal startup. It affects only the `smartcreditor-dev` Docker Compose project.
-
-Use `Ctrl+C` to stop the backend before restarting/resetting. Stop PostgreSQL without deleting data:
+Требуются Docker и Docker Compose. Из корня репозитория:
 
 ```sh
-docker compose --project-name smartcreditor-dev stop
+docker compose --profile app up --build -d --wait
 ```
 
-## Sample accounts
+Открыть [вход](http://localhost:8080/login), затем [новую заявку](http://localhost:8080/app),
+[мои заявки](http://localhost:8080/app/applications) или [компании](http://localhost:8080/app/companies).
+Первой сборке нужен доступ к Docker Hub и Maven Central. Для локального окружения
+используются профиль `dev`, опубликованные тестовые ключи и синтетические аккаунты.
+Для публичного размещения нужны собственные ключи, профиль `prod`, HTTPS и secure cookies.
 
-Initial shared password: **`DemoCredit2026!`**. All data is synthetic; `.test` emails and tax IDs are local fixtures. Tax IDs are not checked externally.
+Порты и будущий скорер настраиваются через `.env` по [.env.example](.env.example).
+Данные хранятся в постоянном volume PostgreSQL. Остановка с сохранением данных:
 
-| Email | Role | Business | Can submit |
-| --- | --- | --- | --- |
-| `owner@demo.test` | `OWNER` | ООО «Демо Оборот» | Yes |
-| `admin@demo.test` | `ADMIN` | ООО «Демо Оборот» | Yes |
-| `viewer@demo.test` | `VIEWER` | ООО «Демо Оборот» | No (`403`) |
-| `other@demo.test` | `OWNER` | ИП Демо Развитие | Own business only |
+```sh
+docker compose --profile app stop
+```
 
-**Business ID** values:
+Не используйте `down -v`, если данные нужны. При несовпадении Flyway checksum
+не изменяйте применённые миграции и не очищайте рабочую БД: создайте отдельный
+Compose-проект для проверки с чистой базой.
 
-| Business | UUID |
-| --- | --- |
-| ООО «Демо Оборот» | `10000000-0000-4000-8000-000000000001` |
-| ИП Демо Развитие | `10000000-0000-4000-8000-000000000002` |
+Для разработки на хосте нужны JDK 21+ и Docker: `sh ./start_dev.sh` (macOS/Linux)
+или `start_dev.bat` (Windows). Скрипты собирают и тестируют Java, затем запускают её
+на 8080, PostgreSQL — на 5433. `start_dev_clean` **удаляет данные** проекта
+`smartcreditor-dev`; обычный запуск их сохраняет.
 
-Existing records are matched by email or tax ID; passwords, business details, and roles stay unchanged. The password above applies to new accounts.
+## Тестовые аккаунты
 
-## Check application submission
+Общий начальный пароль: **`DemoCredit2026!`**. Все данные синтетические.
 
-1. As `owner@demo.test`, submit for ООО «Демо Оборот»: `1000000` RUB, `24` months, any purpose and payment frequency, optional collateral. Expect confirmation with an application UUID.
-2. Sign out and repeat as `viewer@demo.test`: submission is denied (`403`).
-3. As `other@demo.test`: the ООО «Демо Оборот» UUID returns `404`; the ИП Демо Развитие UUID allows submission.
-4. Restart normally: verify accounts and applications persist without duplicate sample users or businesses.
+| Аккаунт | Роль | Компания |
+| --- | --- | --- |
+| `owner@demo.test` | OWNER | ООО «Демо Оборот» |
+| `admin@demo.test` | ADMIN | ООО «Демо Оборот» |
+| `viewer@demo.test` | VIEWER, только чтение | ООО «Демо Оборот» |
+| `other@demo.test` | OWNER | ИП Демо Развитие |
 
-## Current limits
+Seed добавляет отсутствующие записи в `dev`, не меняя существующие пароли и роли.
+При активном `prod` seed выключен. `DEMO_DATA_ENABLED=false` отключает его в `dev`.
 
-Scorer integration is pending; background processing is disabled by default. Applications and queue tasks remain `PENDING`. Acceptance is not a credit decision. Retrying after a lost response may create a duplicate.
+## Проверка основного пути
 
-## Development settings
+1. Войти как владелец. В «Компаниях» заполнить отсутствующие дату регистрации и
+   заявленный статус, например `2020-01-01` / «Действует».
+2. Создать заявку: «Оборотные средства», 1 000 000 ₽, 24 месяца, ежемесячно.
+   Выручка — 1 000 000, расходы — 600 000, текущие платежи — 10 000 ₽/месяц.
+3. Сохранить черновик. В карточке скачать JSON-шаблон отчёта, проверить значения
+   и загрузить файл. Без сведений/отчёта отправка даст адресный запрос дополнений.
+4. Отправить на рассмотрение. При выключенном скорере результат — `SUBMITTED`,
+   без имитации решения. Перезагрузка и повторный вход сохраняют контекст.
+5. Проверить просмотр через `viewer` и отсутствие доступа через `other`.
+6. После подключения Python результат появится в этой же карточке. Для предложения
+   доступны принятие/отказ и явно обозначенные имитации подписания и выдачи.
 
-IDE or `spring-boot:run` settings:
+## Архитектура и граница Python
 
-| Variable | Local value |
-| --- | --- |
-| `SPRING_PROFILES_ACTIVE` | `dev` |
-| `DB_URL` | `jdbc:postgresql://localhost:5433/smartcreditor` |
-| `DB_USER` | `smartcreditor` |
-| `DB_PASSWORD` | `localdev` |
-| `DEMO_DATA_ENABLED` | `true` by default in `dev` |
+```mermaid
+flowchart LR
+    Browser[Кабинет в браузере] --> Java[Spring MVC / API / авторизация]
+    Java --> DB[(PostgreSQL: заявки, документы, очередь, история)]
+    DB --> Worker[Java dispatch worker]
+    Worker -. POST /request, после подключения .-> Python[Будущий Python-сервис]
+    Python -. POST /scored .-> Java
+    Java --> Policy[Продуктовые правила и платёжная нагрузка]
+```
 
-Seeding requires `dev` and `app.demo-data.enabled=true`; any active `prod` profile disables it. Set `DEMO_DATA_ENABLED=false` to skip seeding and retain existing records.
+Для подключения задать `SCORER_ENABLED=true`, `SCORER_BASE_URL` и одинаковый
+`SCORER_TOKEN` на обеих сторонах, затем пересоздать Java-контейнер. Контракт остаётся
+`POST /request` → `202` → `POST /scored` → `204`. Ошибки связи, некорректный ответ и
+кредитный отказ — разные исходы. Подробнее: [интеграция](docs/SCORER.md).
 
-See [authorization](docs/AUTHORIZATION.md) and [target architecture and planned work](docs/architecture/architecture.md).
+## Документация и тесты
+
+- [Реализованный Java MVP, состояния, модель данных, ограничения и сценарии](docs/MVP_JAVA.md).
+- [OpenAPI кабинета](code/app/backend/src/main/resources/openapi/credit.yaml), также `GET /api/credit/openapi` после входа.
+- [OpenAPI обмена со скорером](docs/openapi/scorer.yaml).
+- [Postman-коллекция](docs/requests/credit-mvp.postman_collection.json).
+- [Авторизация](docs/AUTHORIZATION.md), [решение о границе Java/Python](docs/adr/0003-java-mvp-python-boundary.md).
+- [Сторонние компоненты и упрощения](THIRD_PARTY_NOTICES).
+- [Исходная целевая архитектура](docs/architecture/architecture.md) описывает более широкий план; текущая реализация и отклонения зафиксированы в ADR-0003.
+
+```sh
+POSTGRES_PORT=5433 docker compose --project-name smartcreditor-dev up -d --wait
+cd code/app/backend
+DB_URL=jdbc:postgresql://localhost:5433/smartcreditor sh ./mvnw test
+```
+
+Дополнительные проверки браузерного HTTP-клиента: `node --test src/test/js/credit-api.test.cjs`
+из каталога backend (Node.js 18+, только для тестов).
+
+Интеграционные тесты создают отдельные временные схемы и не очищают пользовательские
+данные. HTTP-клиент скорера подменяется только в тестах; исполняемого режима
+симуляции в приложении нет. В Windows задайте `DB_URL` перед `mvnw.cmd test`.
+
+Реальные внешние проверки, OCR, подпись и перечисление средств не выполняются.
+Профиль компании содержит заявленные сведения. Документы — структурированные JSON
+до 1 МиБ, хранятся в БД. Существующий Python-код и модель в `code/scorer` не изменены
+и не входят в контейнер Java.

@@ -1,0 +1,53 @@
+Third-party components and prototype integrations
+================================================
+
+Java runtime: OpenJDK 21, Eclipse Temurin images. OpenJDK is GPL v2 with the
+Classpath Exception; image-specific distribution notices remain in the images.
+Exact build/runtime image digests are recorded in code/app/backend/Dockerfile.
+
+Spring Boot 4.1.1 and managed Spring Framework, Spring Security, Spring Data,
+Spring MVC and Thymeleaf integration: Apache License 2.0, except transitive
+components with their own notices. Exact managed versions are fixed by the
+Spring Boot parent BOM in code/app/backend/pom.xml.
+
+Thymeleaf: Apache License 2.0.
+Hibernate ORM: GNU Lesser General Public License 2.1.
+Flyway Community: Apache License 2.0.
+PostgreSQL JDBC driver: BSD 2-Clause License.
+PostgreSQL 17 (Docker image): PostgreSQL License; image notices also apply.
+Jackson: Apache License 2.0.
+Nimbus JOSE + JWT: Apache License 2.0.
+Apache Maven 3.10.0 / Maven Wrapper 3.3.4: Apache License 2.0.
+JUnit, Mockito, AssertJ and Spring test dependencies are development/test tools;
+their respective licenses are supplied with their distributions.
+
+No CDN or paid API is required by the Java cabinet. HTML, CSS and JavaScript
+assets are repository-local; fonts fall back to installed system fonts.
+
+Existing Python research files and model artifacts are retained unchanged.
+Their dependencies and versions are listed in code/scorer/requirements.txt;
+NumPy, pandas, SciPy, scikit-learn, joblib and threadpoolctl use BSD-style
+licenses; CatBoost uses Apache License 2.0; Matplotlib uses its own BSD-compatible
+license; notebook tools use their upstream licenses. They are not installed or
+executed by the Java Docker build. The existing model is not a component of the
+Java runtime until a separate Python service is supplied.
+
+Data: development accounts, companies, report examples and test fixtures are
+synthetic project data. No real customer, bureau or bank records are included.
+Development RSA keys and demo passwords are public test fixtures, not production
+credentials.
+
+Integrations and simplifications:
+- Python scorer: external HTTP contract only. No local provider, generated score,
+  runtime callback simulator or fallback model is included.
+- EGRUL/EGRIP, FNS and credit bureaus: no live or simulated external calls in the
+  Java branch. Company profile fields are declared information, not verified
+  source responses. Future integration must preserve this distinction.
+- Financial documents: structured JSON schema/value consistency checks, not OCR
+  or verification of arbitrary statements. Prototype document bytes live in DB.
+- Signing and disbursement: explicitly labelled state transitions only; no legal
+  signature, payment rail or transfer is performed.
+- Credit policy: simplified product/age/affordability rules, not bank policy.
+- No LLM or closed-weight model is used in the Java runtime.
+
+This inventory does not replace the license texts distributed with dependencies.

@@ -1,14 +1,12 @@
-# Java–scorer integration
+# Java–Python scorer contract
 
-Java sends `POST /request` to the Python scorer service and receives results at `POST /scored`. Request acceptance, the PostgreSQL queue, prediction, and callback workers are implemented in [`code/scorer/scorer_service`](../code/scorer/scorer_service). [OpenAPI contract](openapi/scorer.yaml).
+Java owns the client workflow and final product/affordability policy. Python will provide the external
+scoring service. **There is no local scorer, fallback model, generated callback or scoring demo mode.**
+[Exchange OpenAPI](openapi/scorer.yaml) · [Java workflow and rules](MVP_JAVA.md).
 
-## Scoring request
+## Request and acknowledgement
 
-```http
-POST http://localhost:8000/request
-Content-Type: application/json
-X-Scorer-Token: <SCORER_TOKEN>
-```
+Java sends `POST /request` to `SCORER_BASE_URL` with `X-Scorer-Token: <SCORER_TOKEN>`:
 
 ```json
 {
@@ -23,130 +21,109 @@ X-Scorer-Token: <SCORER_TOKEN>
     "applicant_entity_type": "legal_entity",
     "applicant_inn": "7700000000",
     "msp_category": "micro",
-    "snapshot_on": "2026-10-25",
-    "average_headcount": 10
+    "snapshot_on": "2026-10-26",
+    "average_headcount": 10,
+    "product_id": "equipment",
+    "input_revision": 2,
+    "financials": {
+      "monthlyRevenue": "1000000.00",
+      "monthlyExpenses": "600000.00",
+      "existingMonthlyPayment": "10000.00"
+    }
   }
 }
 ```
 
-- `id`: existing application UUID.
-- `parameters`: input to `Scorer.predict`, excluding `id` and `target`; names and categories follow the [model contract](../code/scorer/docs/INTERFACE.md). Combines application parameters with stored `Business` data, including available registry and nested data.
-- Amounts: exact decimal strings in rubles, supported by the model. Dates: `YYYY-MM-DD`; `snapshot_on` is the application's UTC creation date.
-- Unknown data: `null`, never fabricated values. A stub may accept missing `msp_category`, but real prediction requires all mandatory model fields or a technical error. Data enrichment is outside this integration.
+`id` is the existing Java application's UUID. Parameter names/categories of the existing model are
+retained, with declared business fields and available registry/nested data. Unknown data stays null.
+The model adapter must accept/ignore extra parameters it does not use; no ID or target is included
+inside model parameters. Monthly financial values and requested money are decimal strings in RUB.
+For mandatory input semantics see [the existing model interface](../code/scorer/docs/INTERFACE.md).
 
-The scorer must persist the request and return **`202 Accepted` after commit**, then asynchronously run prediction and send the callback. Repeated requests with the same `id` and parameters return `202` without creating another task; a completed result may be sent again. Different parameters for the same `id` return `409`. This enables retries after network failures or Java restarts.
+Python must persist the request and return **202 after commit**, then process it asynchronously.
+Repeated UUID/equivalent input must return 202 without duplicate computation. Different input under
+an existing UUID must return 409. Java freezes the payload on submission; profile edits and retries
+cannot change it. The confirmed report reference/checksum, product and policy versions are retained
+in the Java submission snapshot. Draft/NEEDS_INFO tasks are paused and never dispatched.
 
-The implemented FastAPI endpoint validates the request envelope, rejects a
-missing or invalid service token with `401`, and returns `503` without
-acknowledgement if the database transaction cannot be committed. The queue
-table is created automatically when the service starts.
+## Callback
 
-## Result callback
-
-The scorer uses its configured Java backend URL:
-
-```http
-POST http://localhost:8080/scored
-Content-Type: application/json
-X-Scorer-Token: <SCORER_TOKEN>
-```
-
-Until credit decision logic is implemented, a rejection stub can return:
+Python sends `POST /scored` to its configured Java URL with the same service token:
 
 ```json
 {
-  "status": "DECLINED",
-  "months": null,
-  "percent": null,
-  "sum": null,
-  "id": "a051d4c4-6f76-4a56-a181-1ddcc6821177"
+  "id": "a051d4c4-6f76-4a56-a181-1ddcc6821177",
+  "status": "OFFER",
+  "months": 24,
+  "percent": "20.0000",
+  "sum": "1000000.50"
 }
 ```
 
-Zero terms are also valid for rejection. Java stores rejection as a business outcome, not a technical error.
-
-| Field | Format |
+| Field | Contract |
 | --- | --- |
-| `id` | Required UUID of a submitted application |
-| `status` | Required: `OK`, `DECLINED`, or `OFFER` |
-| `months` | Non-negative integer; required and positive for `OK` / `OFFER` |
-| `percent` | Non-negative annual percentage (`15.5` = 15.5%); up to 5 integer and 4 fractional digits; required for `OK` / `OFFER` |
-| `sum` | Non-negative ruble amount; up to 15 integer and 2 fractional digits; required and positive for `OK` / `OFFER` |
+| `id` | Required UUID of a dispatched application |
+| `status` | `OK`, `OFFER` or `DECLINED` |
+| `months` | Positive integer for OK/OFFER; null or non-negative for DECLINED |
+| `percent` | Annual percent, not a fraction; non-negative, ≤5 integer / 4 decimal digits; required for OK/OFFER |
+| `sum` | RUB; positive for OK/OFFER, ≤15 integer / 2 decimal digits; optional/non-negative for DECLINED |
+
+Exact decimal strings are preferred; JSON numbers are also accepted. Requested funds in a rejection
+are not an offer. Model failure is a technical error, never `DECLINED`. Java preserves the original
+callback separately from the final decision. Positive callbacks are subjected to the selected product
+limits and affordability policy; a positive model outcome does not bypass those checks.
 
 | HTTP | Meaning |
 | --- | --- |
-| `204` | Result saved or identical result already accepted |
-| `400` | Invalid JSON, status, or terms |
-| `401` | Missing/invalid service token; an empty configured token also rejects callbacks |
-| `404` | Application not found |
-| `409` | Application not yet sent or a different result already stored |
+| 204 | Saved after commit, or an identical callback already stored |
+| 400 | Malformed JSON/status/terms |
+| 401 | Missing/incorrect shared token, or Java token not configured |
+| 404 | Application not found |
+| 409 | Unsent/cancelled application or conflicting previously stored result |
+| 422 | Positive terms violate Java product/rate validation; technical incompatibility, not credit decline |
 
-Decimals compare by value: `15` and `15.0000` are equal. Duplicate callbacks preserve the first result timestamp; conflicting callbacks never overwrite it. Late results for sent tasks are accepted even after a technical timeout.
+Duplicate decimals compare numerically: `15` and `15.0000` are equal. Duplicates preserve the first
+result timestamp and do not recreate offers or events. A callback may arrive before the initial 202
+ACK. A late result can recover technical FAILED, but cannot reopen CANCELLED. The service token is
+not logged or exposed to browsers. Only `POST /scored` has the service-token security chain; browser
+API mutations still require JWT-cookie authentication and CSRF.
 
-A separate Spring Security chain protects only `POST /scored` with the service token. Browser JWT and CSRF are not required; client POST protection is unchanged. The token is never logged.
+## Durable execution
 
-## Java persistence and execution
+The Java worker claims `PENDING`, expired `PROCESSING` or expired `AWAITING_RESULT` rows with
+`FOR UPDATE SKIP LOCKED`. It commits the lease before HTTP and holds no database lock while
+waiting for Python. 202 moves the row to `AWAITING_RESULT`; a callback commits the original result,
+final decision, event and task completion atomically. Late ACKs cannot overwrite a newer attempt or
+completed/cancelled task.
 
-- The application, immutable request snapshot, and `CreditApplicationTask` are saved atomically. Company edits and retries do not change the snapshot.
-- Migration `V5` adds the JSONB snapshot, retry/error metadata, and terminal task states `COMPLETED` / `FAILED`. Existing tasks remain; missing snapshots are built from current company data on first dispatch.
-- The worker claims one ready task using `FOR UPDATE SKIP LOCKED`, saves `PROCESSING` and lease expiry, then commits before HTTP. No database locks are held during HTTP.
-- `202` moves the task to `AWAITING_RESULT`; transient errors return it to `PENDING`. Expired `PROCESSING` and `AWAITING_RESULT` tasks are retried, including after restarts.
-- Network errors, unexpected ACKs, `5xx`, `408`, and `429` allow retries; other `4xx` are terminal technical failures. Exhausted attempts mark both application and task `FAILED`. Errors are stored as safe codes without payloads or tokens.
-- An accepted callback atomically stores `CreditApplication.scorerResult` (`ScorerResult`, JSONB) and `scorerResultReceivedAt`, completing both application and task. The business outcome is `scorerResult.status`. Existing DB columns remain `scoredResult` / `scoredAt`, mapped via `@Column`.
-- A callback before ACK or a response from an older attempt cannot move a completed application back to waiting.
+Network failures, unexpected ACKs, 5xx, 408 and 429 retry with configured bounds. Other request 4xx
+are permanent technical failures. Exhausted sends or callback timeouts become FAILED. Request
+payloads and tokens are excluded from error logs. A restart recovers expired leases from PostgreSQL.
+Legacy pre-MVP submissions retain their original result contract; their cabinet view is read-only.
 
-## Configuration and startup
-
-The Java worker is disabled by default. Enabling it requires a scorer URL and shared service token.
+## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SCORER_ENABLED` | `false` | Enable Java dispatch worker |
-| `SCORER_BASE_URL` | `http://localhost:8000` | Scorer service URL |
-| `SCORER_TOKEN` | Empty | Shared `X-Scorer-Token`; required when worker is enabled |
+| `SCORER_ENABLED` | `false` | Enable dispatch only when Python is ready |
+| `SCORER_BASE_URL` | `http://localhost:8000` natively; host gateway in Compose | Python URL reachable from Java |
+| `SCORER_TOKEN` | Empty | Shared token; enabled Java worker rejects an empty value |
 | `SCORER_CONNECT_TIMEOUT` | `PT3S` | Connection timeout |
 | `SCORER_READ_TIMEOUT` | `PT10S` | HTTP response timeout |
-| `SCORER_REQUEST_LEASE` | `PT30S` | Dispatch lease; must exceed combined HTTP timeouts |
-| `SCORER_CALLBACK_TIMEOUT` | `PT60S` | Result wait after ACK |
-| `SCORER_RETRY_DELAY` | `PT5S` | Delay after transient failure |
-| `SCORER_MAX_ATTEMPTS` | `5` | Maximum sends per snapshot |
-| `SCORER_POLL_DELAY_MS` | `1000` | Delay between task polls |
+| `SCORER_REQUEST_LEASE` | `PT30S` | Must exceed combined HTTP timeouts |
+| `SCORER_CALLBACK_TIMEOUT` | `PT60S` | Callback deadline after ACK |
+| `SCORER_RETRY_DELAY` | `PT5S` | Retry delay |
+| `SCORER_MAX_ATTEMPTS` | `5` | Send limit |
+| `SCORER_POLL_DELAY_MS` | `1000` | Poll delay |
 | `SCORER_INITIAL_DELAY_MS` | `1000` | Initial worker delay |
 
-From the repository root, with the scorer already running:
+Configure Python's callback URL separately: `http://app:8080/scored` on the same Compose network,
+or the Java host URL. Without Python, leave dispatch disabled; full applications remain SUBMITTED.
+No model artifact or Python package is required by the Java container.
 
-```sh
-POSTGRES_PORT=5433 docker compose --project-name smartcreditor-dev up -d --wait
-cd code/app/backend
-SPRING_PROFILES_ACTIVE=dev \
-DB_URL=jdbc:postgresql://localhost:5433/smartcreditor \
-SCORER_ENABLED=true \
-SCORER_BASE_URL=http://localhost:8000 \
-SCORER_TOKEN=local-scorer-demo-token \
-sh ./mvnw spring-boot:run
-```
+## Verification
 
-This integration includes no web templates or automatic sample accounts. A user, business, and access rights must exist before submission. Simulate a callback using an already dispatched application's UUID and the same `SCORER_TOKEN`:
-
-```sh
-curl -i http://localhost:8080/scored \
-  -H 'Content-Type: application/json' \
-  -H 'X-Scorer-Token: local-scorer-demo-token' \
-  --data '{"status":"DECLINED","months":null,"percent":null,"sum":null,"id":"a051d4c4-6f76-4a56-a181-1ddcc6821177"}'
-```
-
-## Tests
-
-With PostgreSQL running, from `code/app/backend`:
-
-```sh
-SPRING_PROFILES_ACTIVE=dev \
-DB_URL=jdbc:postgresql://localhost:5433/smartcreditor \
-sh ./mvnw test
-```
-
-HTTP tests use a local `/request` stub. Integration tests create and delete only a temporary PostgreSQL schema; the test worker does not claim development tasks. Coverage includes:
-
-- Snapshots and exact amounts; rejection before ACK; duplicates and conflicts.
-- Service authorization and client-route CSRF.
-- Transient/permanent failures, callback timeout, late results, expired-task recovery, and concurrent workers.
+Java tests exercise HTTP callbacks and mock the outgoing client strictly inside tests. They cover
+snapshot freezing, callbacks before ACK, duplicate/conflicting results, authorization, decimal
+precision, bounded retries/timeouts, concurrent workers, late results and cancelled applications.
+No testing stub is installed as a runtime application mode. Commands are in [MVP_JAVA.md](MVP_JAVA.md).

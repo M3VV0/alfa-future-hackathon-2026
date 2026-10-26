@@ -1,0 +1,336 @@
+{
+  "info": {
+    "name": "Java Credit MVP",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "No local scoring provider. Run in order through submit. A future external Python callback is required for an offer. Postman cookie jar must be enabled; repeat CSRF acquisition after login."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "companyId",
+      "value": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "key": "applicationId",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "90000000-0000-4000-8000-000000000001"
+    },
+    {
+      "key": "csrfHeader",
+      "value": "X-XSRF-TOKEN"
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Get CSRF (run again after login)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/auth/csrf",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set(\"csrfHeader\", data.headerName);",
+              "pm.collectionVariables.set(\"csrfToken\", data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Login synthetic owner",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/login",
+        "header": [
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "email",
+              "value": "owner@demo.test"
+            },
+            {
+              "key": "password",
+              "value": "DemoCredit2026!"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 Refresh CSRF after login",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/auth/csrf",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set(\"csrfHeader\", data.headerName);",
+              "pm.collectionVariables.set(\"csrfToken\", data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 My companies",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/companies",
+        "header": []
+      }
+    },
+    {
+      "name": "05 Products",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/products",
+        "header": []
+      }
+    },
+    {
+      "name": "05b Complete declared company profile",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/api/credit/companies/{{companyId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"ООО «Демо Оборот»\",\n  \"registeredDate\": \"2020-01-01\",\n  \"registrationStatus\": \"ACTIVE\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "06 Create draft (replay key is stable until manually changed)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{idempotencyKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": \"working-capital\",\n  \"application\": {\n    \"businessId\": \"{{companyId}}\",\n    \"requestedAmount\": \"1000000.00\",\n    \"termMonths\": 24,\n    \"paymentFrequency\": \"MONTHLY\",\n    \"financingPurpose\": \"WORKING_CAPITAL\",\n    \"declaredCollateralValue\": null\n  },\n  \"financials\": {\n    \"monthlyRevenue\": \"1000000.00\",\n    \"monthlyExpenses\": \"600000.00\",\n    \"existingMonthlyPayment\": \"10000.00\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) pm.collectionVariables.set(\"applicationId\", pm.response.json().applicationId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 View draft",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}",
+        "header": []
+      }
+    },
+    {
+      "name": "08 Upload financial-report.json",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/documents",
+        "header": [
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": null,
+              "description": "Select a JSON report matching the application. Example content: {\"inn\": \"7700000000\", \"financials\": {\"monthlyRevenue\": \"1000000.00\", \"monthlyExpenses\": \"600000.00\", \"existingMonthlyPayment\": \"10000.00\"}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "09 Submit (waits for future scorer)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/submit",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "10 Current state and history",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}",
+        "header": []
+      }
+    },
+    {
+      "name": "11 My applications",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/applications",
+        "header": []
+      }
+    },
+    {
+      "name": "Action: accept (only in a compatible state)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/actions/accept",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Action: decline (only in a compatible state)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/actions/decline",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Action: sign (only in a compatible state)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/actions/sign",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Action: disburse (only in a compatible state)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/actions/disburse",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Action: cancel (only in a compatible state)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/credit/applications/{{applicationId}}/actions/cancel",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      }
+    }
+  ]
+}

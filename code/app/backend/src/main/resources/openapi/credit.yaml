@@ -1,0 +1,374 @@
+openapi: 3.0.3
+info:
+  title: Java credit cabinet MVP
+  version: 1.0.0
+  description: Java intake and credit workflow. No local scoring provider. External scoring exchange is documented separately in docs/openapi/scorer.yaml.
+servers:
+  - url: http://localhost:8080
+security:
+  - accessCookie: []
+tags:
+  - name: Cabinet
+paths:
+  /api/credit/products:
+    get:
+      operationId: listProducts
+      responses:
+        '200':
+          description: Versioned product catalogue
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Product'}
+  /api/credit/companies:
+    get:
+      operationId: listCompanies
+      responses:
+        '200':
+          description: Only companies accessible to the current user; role is OWNER, ADMIN or VIEWER
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Company'}
+  /api/credit/companies/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    put:
+      operationId: updateDeclaredCompanyProfile
+      security: [{accessCookie: [], csrfHeader: []}]
+      description: OWNER or ADMIN only. Declared profile data; not a verified registry result. Does not change submitted application snapshots.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, registeredDate, registrationStatus]
+              properties:
+                name: {type: string, minLength: 1, maxLength: 255}
+                registeredDate: {type: string, format: date, description: Must not be in the future}
+                registrationStatus: {type: string, enum: [ACTIVE, REORGANIZING, TERMINATING, TERMINATED, OTHER]}
+      responses:
+        '204': {description: Saved}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/credit/applications:
+    get:
+      operationId: listApplications
+      description: Most recent 100 applications for companies accessible to the current user, including readable legacy applications.
+      responses:
+        '200':
+          description: Scoped list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: {type: string, format: uuid}
+                    createdAt: {type: string, format: date-time}
+                    requestedAmount: {type: string}
+                    termMonths: {type: integer}
+                    company: {type: string, nullable: true}
+                    productId: {type: string, nullable: true}
+                    state: {type: string}
+                    reasonCode: {type: string, nullable: true}
+        '401': {description: Sign in required}
+    post:
+      operationId: createDraft
+      security: [{accessCookie: [], csrfHeader: []}]
+      description: OWNER or ADMIN only. Same user/key and equivalent input returns the same application UUID. Different input with the same key is 409. Drafts cannot be dispatched to scoring.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CabinetInput'}
+      responses:
+        '201':
+          description: Draft created or identical create replayed
+          headers:
+            Location:
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [applicationId]
+                properties:
+                  applicationId: {type: string, format: uuid}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/credit/applications/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    get:
+      operationId: getApplication
+      responses:
+        '200':
+          description: Parameters, current state, conditions, immutable document versions and ordered history; Cache-Control no-store
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApplicationView'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      operationId: editDraft
+      security: [{accessCookie: [], csrfHeader: []}]
+      description: DRAFT or NEEDS_INFO only. The company binding is immutable. Increments input revision and stores an audit snapshot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CabinetInput'}
+      responses:
+        '204': {description: Draft saved}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/credit/applications/{id}/submit:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      operationId: submitApplication
+      security: [{accessCookie: [], csrfHeader: []}]
+      description: Checks completeness, report matching and company stop rules. The client reads the resulting state separately. Complete requests are queued; disabled scoring leaves SUBMITTED, with no generated model result. Repeating for SUBMITTED/SCORING is safe.
+      responses:
+        '202': {description: Command committed; resulting state may be NEEDS_INFO, REJECTED or SUBMITTED}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/credit/applications/{id}/documents:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      operationId: uploadFinancialReport
+      security: [{accessCookie: [], csrfHeader: []}]
+      description: JSON report up to 1 MiB, with inn and financials matching the company/application on submission. Only DRAFT/NEEDS_INFO. Validates content, not browser MIME. Keeps previous immutable versions. No PDF/OCR.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201':
+          description: Immutable document version stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documentId: {type: string, format: uuid}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {description: Report is empty or larger than 1 MiB}
+  /api/credit/applications/{id}/documents/{document}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+      - name: document
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      operationId: downloadFinancialReport
+      responses:
+        '200':
+          description: Authorized attachment, including for VIEWER; no-store and nosniff
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Report'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/credit/applications/{id}/actions/{action}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+      - name: action
+        in: path
+        required: true
+        schema: {type: string, enum: [accept, decline, sign, disburse, cancel]}
+    post:
+      operationId: actOnApplication
+      security: [{accessCookie: [], csrfHeader: []}]
+      description: OWNER/ADMIN only. Valid transitions only; immediately repeated commands are idempotent. Signing and disbursement are explicitly simulated and perform no legal/financial operation. Cancelled applications reject late callbacks.
+      responses:
+        '204': {description: Action committed or same target state already reached}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/credit/openapi:
+    get:
+      operationId: getOpenApi
+      responses:
+        '200':
+          description: This OpenAPI contract
+          content:
+            application/yaml:
+              schema: {type: string}
+components:
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: Obtain via the existing CSRF-protected login form; session-backed JWT cookie.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Fetch GET /auth/csrf; use the returned headerName/token with the matching CSRF cookie. Fetch again after login.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    Invalid:
+      description: Invalid payload, product limits or input values
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Forbidden:
+      description: Insufficient company role or missing/invalid CSRF. Response may have no body.
+    NotFound:
+      description: Not found or belongs to another company. No disclosure of another company's data.
+    Conflict:
+      description: Idempotency conflict or invalid state transition
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Money:
+      description: RUB, non-negative, at most 15 integer digits and 2 fractional digits. Decimal string accepted for precision.
+      oneOf:
+        - {type: number, minimum: 0}
+        - {type: string, pattern: '^\d{1,15}(\.\d{1,2})?$'}
+    Financials:
+      type: object
+      required: [monthlyRevenue, monthlyExpenses, existingMonthlyPayment]
+      properties:
+        monthlyRevenue: {$ref: '#/components/schemas/Money'}
+        monthlyExpenses: {$ref: '#/components/schemas/Money'}
+        existingMonthlyPayment: {$ref: '#/components/schemas/Money'}
+    Report:
+      type: object
+      required: [inn, financials]
+      properties:
+        inn: {type: string, minLength: 1}
+        financials: {$ref: '#/components/schemas/Financials'}
+    Request:
+      type: object
+      required: [businessId, requestedAmount, termMonths, paymentFrequency, financingPurpose]
+      properties:
+        businessId: {type: string, format: uuid}
+        requestedAmount: {$ref: '#/components/schemas/Money'}
+        termMonths: {type: integer, minimum: 1, maximum: 2147483647}
+        paymentFrequency: {type: string, enum: [MONTHLY, QUARTERLY]}
+        financingPurpose: {type: string, enum: [WORKING_CAPITAL, EQUIPMENT]}
+        declaredCollateralValue:
+          nullable: true
+          allOf: [{$ref: '#/components/schemas/Money'}]
+    CabinetInput:
+      type: object
+      required: [productId, application]
+      properties:
+        productId: {type: string, enum: [working-capital, equipment]}
+        application: {$ref: '#/components/schemas/Request'}
+        financials:
+          nullable: true
+          allOf: [{$ref: '#/components/schemas/Financials'}]
+    Product:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        minAmount: {$ref: '#/components/schemas/Money'}
+        maxAmount: {$ref: '#/components/schemas/Money'}
+        minMonths: {type: integer}
+        maxMonths: {type: integer}
+        minBusinessAgeMonths: {type: integer}
+        purpose: {type: string}
+        version: {type: string}
+    Company:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string, nullable: true}
+        inn: {type: string}
+        type: {type: string}
+        registeredDate: {type: string, format: date, nullable: true}
+        registrationStatus: {type: string, nullable: true}
+        role: {type: string, enum: [OWNER, ADMIN, VIEWER]}
+    Decision:
+      type: object
+      description: No offered money/terms for REJECTED. Original scorer result is stored separately.
+      properties:
+        state: {type: string, enum: [OFFERED, REJECTED]}
+        reasonCode: {type: string}
+        amount: {type: number, nullable: true}
+        months: {type: integer, nullable: true}
+        annualRate: {type: number, nullable: true}
+        payment: {type: number, nullable: true}
+        paymentFrequency: {type: string, nullable: true}
+        expiresAt: {type: string, format: date-time, nullable: true}
+        policyVersion: {type: string}
+        productVersion: {type: string}
+    ApplicationView:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        application: {$ref: '#/components/schemas/Request'}
+        createdAt: {type: string, format: date-time}
+        technicalStatus: {type: string, enum: [PENDING, PROCESSING, COMPLETED, FAILED]}
+        scoringEnabled: {type: boolean}
+        canManage: {type: boolean}
+        legacy: {type: boolean}
+        productId: {type: string}
+        revision: {type: integer}
+        state:
+          type: string
+          enum: [DRAFT, NEEDS_INFO, SUBMITTED, SCORING, OFFERED, REJECTED, FAILED, ACCEPTED, SIGNED_SIMULATED, DISBURSED_SIMULATED, DECLINED, CANCELLED, EXPIRED, PENDING, PROCESSING, COMPLETED]
+        reasonCode: {type: string}
+        financials:
+          nullable: true
+          allOf: [{$ref: '#/components/schemas/Financials'}]
+        decision:
+          nullable: true
+          allOf: [{$ref: '#/components/schemas/Decision'}]
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string, format: uuid}
+              revision: {type: integer}
+              checksum: {type: string}
+              createdAt: {type: string, format: date-time}
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              state: {type: string}
+              reasonCode: {type: string}
+              revision: {type: integer}
+              createdAt: {type: string, format: date-time}
+    Error:
+      type: object
+      properties:
+        code: {type: string}
