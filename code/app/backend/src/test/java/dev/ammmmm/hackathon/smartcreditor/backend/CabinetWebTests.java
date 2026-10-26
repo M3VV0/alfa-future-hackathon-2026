@@ -102,10 +102,20 @@ class CabinetWebTests {
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(content().string(matchesPattern("(?s).*name=\"csrf-token\" content=\"[^\"]+\".*")))
                 .andExpect(content().string(containsString("name=\"csrf-header\" content=\"X-XSRF-TOKEN\"")))
-                .andExpect(content().string(containsString("action=\"/api/credit/application/submit\"")))
+                .andExpect(content().string(containsString("action=\"/api/credit/applications\"")))
                 .andExpect(content().string(containsString("data-csrf-url=\"/auth/csrf\"")))
                 .andExpect(content().string(
                         matchesPattern("(?s).*action=\"/logout\".*name=\"_csrf\" value=\"[^\"]+\".*")));
+    }
+
+    @Test
+    void listDetailAndCompanyPagesAreAuthenticatedServerRenderedViews() throws Exception {
+        for (String path : List.of("/app/applications", "/app/applications/10000000-0000-4000-8000-000000000001", "/app/companies")) {
+            mvc.perform(get(path)).andExpect(redirectedUrl("/login"));
+            mvc.perform(get(path).with(user("owner"))).andExpect(status().isOk())
+                    .andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(content().string(containsString("/assets/cabinet.js")));
+        }
     }
 
     @Test

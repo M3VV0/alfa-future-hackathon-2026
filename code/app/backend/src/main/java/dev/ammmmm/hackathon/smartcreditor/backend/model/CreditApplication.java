@@ -73,6 +73,10 @@ public class CreditApplication {
         return status;
     }
 
+    public void replaceDraftRequest(CreditApplicationRequest request) {
+        this.request = Objects.requireNonNull(request);
+    }
+
     public void markProcessing() {
         this.status = Status.PROCESSING;
     }
@@ -88,6 +92,10 @@ public class CreditApplication {
     public void complete(ScorerResult result, Instant now) {
         this.scorerResult = Objects.requireNonNull(result);
         this.scorerResultReceivedAt = now;
+        this.status = Status.COMPLETED;
+    }
+
+    public void markCompletedWithoutScoring() {
         this.status = Status.COMPLETED;
     }
 

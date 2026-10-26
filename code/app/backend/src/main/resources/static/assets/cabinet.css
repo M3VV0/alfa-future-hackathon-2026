@@ -1113,3 +1113,14 @@ select option {
     color: var(--ink);
     font-weight: 650;
 }
+
+/* Application history and workflow actions share the existing cabinet styles. */
+.dossier-card { margin: 24px 0; padding: 28px; }
+.dossier-card h3 { margin-top: 24px; }
+.cabinet-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.report-upload, .company-form { display: grid; gap: 16px; margin: 20px 0; max-width: 560px; }
+.report-upload label, .company-form label { display: grid; gap: 8px; }
+.company-form input, .company-form select { padding: 12px; border: 1px solid #bbb; border-radius: 8px; background: #fff; color: #222; }
+.document-link { display: block; margin: 16px 0; }
+.dossier-card li { margin: 12px 0; line-height: 1.6; }
+.dossier-card pre { white-space: pre-wrap; overflow-wrap: anywhere; }

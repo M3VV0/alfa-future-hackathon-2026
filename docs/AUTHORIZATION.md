@@ -24,13 +24,26 @@ Login uses `application/x-www-form-urlencoded`. Invalid or missing fields return
 
 Auth cookies are `access_token` and `refresh_token`, with HttpOnly, SameSite=Lax, Path=/, and Secure enabled by default. For local HTTP, set `AUTH_COOKIE_SECURE=false`. Configure keys through `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY`.
 
-Browser POST requests require CSRF protection: submit the `_csrf` field or the `X-XSRF-TOKEN` header containing the token obtained from server-rendered HTML. After login/logout, obtain a new CSRF token from the next page.
+Browser POST, PUT, PATCH and DELETE requests require CSRF protection: submit the `_csrf` field or the `X-XSRF-TOKEN` header containing the token obtained from server-rendered HTML. After login/logout, obtain a new CSRF token from the next page.
 
 The service callback `POST /scored` uses a separate security chain with the `X-Scorer-Token` header, configured through `SCORER_TOKEN`. It does not use browser JWT cookies or CSRF; an absent or blank configured token rejects all callbacks. This exception applies only to that method and path. See [SCORER.md](SCORER.md) for the contract, configuration, and result persistence.
-Every POST requires CSRF protection: submit the `_csrf` form field, or obtain JSON from `GET /auth/csrf` and send `token` in the request header named by `headerName`. Server-rendered forms continue to include a token. After login/logout, obtain a fresh token before the next POST.
+
 
 Auth endpoints and `/api/health` are accessible without an access JWT. For protected routes, authentication failure redirects ordinary requests to `/login`; HTMX receives `401` and `HX-Redirect: /login`.
 
-The login template is served at `/login`; after login, `/app` displays the credit application form. Static styles and scripts under `/assets/` are available without authentication. The form uses the existing JSON submission endpoint. Before submission, refresh, and logout, the frontend obtains a CSRF token from `GET /auth/csrf` and sends it in the returned `headerName` header. This endpoint skips access-JWT authentication so an expired access cookie does not prevent token retrieval. All POST endpoints retain CSRF protection. If submission is rejected with `401`, it attempts refresh once before retrying; network failures and other responses are never retried automatically.
+The login template is served at `/login`; `/app` creates or edits a draft,
+`/app/applications` lists accessible applications, `/app/applications/{id}` displays the workflow,
+and `/app/companies` edits declared company information. Browser JSON endpoints use the same
+JWT-cookie/CSRF policy. Before a mutation the frontend gets a fresh CSRF token from `/auth/csrf`.
+An API 401 triggers one refresh attempt; uncertain network responses are not retried automatically.
+Create retries reuse the same UUID `Idempotency-Key` until the input changes or creation is confirmed.
 
-The company UUID must be entered manually because a company-list endpoint is not available. In the `dev` profile, the application adds missing synthetic users, companies, and memberships at startup unless `DEMO_DATA_ENABLED=false`; existing passwords and roles are preserved. The initializer is excluded when `prod` is active. Credentials and company UUIDs are listed in [README.md](../README.md). The frontend does not create accounts. A successful submission displays the accepted application UUID, without implying a credit decision or ongoing processing.
+Companies come from `GET /api/credit/companies`, scoped to the current user's memberships.
+OWNER and ADMIN may mutate; VIEWER may read only. Application and document access is checked
+against the company's membership on every request; another company's resources return 404.
+All lifecycle commands and callbacks serialize on the same application queue row.
+
+The dev initializer adds missing synthetic accounts, companies and memberships without changing
+existing passwords or roles, unless `DEMO_DATA_ENABLED=false`. It is excluded when `prod` is
+active. The app does not create arbitrary user accounts. An accepted draft or submitted application
+is not a credit approval. No local scoring provider is installed. See [MVP_JAVA.md](MVP_JAVA.md).

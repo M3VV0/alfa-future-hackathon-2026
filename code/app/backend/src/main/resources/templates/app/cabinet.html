@@ -1,0 +1,34 @@
+<!doctype html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" th:content="${_csrf.token}"><meta name="csrf-header" th:content="${_csrf.headerName}">
+    <title th:text="#{cabinet.applications}"></title>
+    <link rel="stylesheet" th:href="@{/assets/cabinet.css}">
+    <script th:src="@{/assets/credit-api.js}" defer></script>
+    <script th:src="@{/assets/cabinet.js}" defer></script>
+</head>
+<body>
+<div class="cabinet-shell">
+    <aside class="sidebar">
+        <a class="brand" th:href="@{/app}"><span class="brand-mark" aria-hidden="true">а<span></span></span><span th:text="#{brand.name}"></span></a>
+        <div class="sidebar-label" th:text="#{application.sidebar}"></div>
+        <nav th:attr="aria-label=#{application.navigation}">
+            <a class="nav-item" th:href="@{/app}" th:text="#{application.new}"></a>
+            <a class="nav-item active" th:href="@{/app/applications}" th:text="#{cabinet.applications}"></a>
+            <a class="nav-item" th:href="@{/app/companies}" th:text="#{cabinet.companies}"></a>
+        </nav>
+        <div class="sidebar-bottom"><form id="logout-form" th:action="@{/logout}" method="post"><button class="logout-button" th:text="#{application.logout}"></button></form></div>
+    </aside>
+    <div class="cabinet-main">
+        <header class="topbar"><span th:text="#{application.financing}"></span><span th:text="#{application.portal}"></span></header>
+        <main class="page-content" id="main">
+            <div class="page-toolbar"><a th:href="@{/app/applications}" th:text="#{cabinet.applications}"></a>
+                <nav class="locale-switcher" th:attr="aria-label=#{language.label}"><a href="?lang=ru">RU</a><a href="?lang=en">EN</a></nav></div>
+            <div id="cabinet-error" class="message message-error" role="alert" tabindex="-1" hidden></div>
+            <div id="cabinet-content" aria-live="polite"><p th:text="#{cabinet.loading}"></p></div>
+        </main>
+    </div>
+</div>
+</body>
+</html>
