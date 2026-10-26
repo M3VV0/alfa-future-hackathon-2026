@@ -25,12 +25,20 @@ paths:
                   format: uuid
                 parameters:
                   type: object
+                  minProperties: 1
                   additionalProperties: true
+              additionalProperties: false
       responses:
         '202':
           description: Request committed; prediction and callback run asynchronously
+        '401':
+          description: Missing or invalid service token
         '409':
           description: Same id with conflicting parameters
+        '422':
+          description: Invalid request envelope or parameters containing target
+        '503':
+          description: Request was not committed because the queue is unavailable
   /scored:
     post:
       servers:
