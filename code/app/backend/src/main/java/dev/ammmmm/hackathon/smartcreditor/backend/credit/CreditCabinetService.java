@@ -261,6 +261,14 @@ public class CreditCabinetService {
         var application = owned(user, id, true);
         var task = lock(id);
         var dossier = expire(dossier(id));
+        if ("retry".equals(action)) {
+            if (Set.of("SUBMITTED", "SCORING").contains(dossier.state())) return;
+            if (!"FAILED".equals(dossier.state())) throw problem(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION");
+            task.restart(Instant.now());
+            application.markPending();
+            state(id, "SUBMITTED", "RETRY_REQUESTED");
+            return;
+        }
         String target = switch (action) {
             case "accept" -> "ACCEPTED";
             case "decline" -> "DECLINED";

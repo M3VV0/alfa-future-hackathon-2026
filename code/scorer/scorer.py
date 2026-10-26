@@ -25,6 +25,7 @@ class Scorer:
             if model_path is not None
             else Path(__file__).parent / "artifacts" / "selected_model.joblib"
         )
+        self.model_version = hashlib.sha256(path.read_bytes()).hexdigest()
         bundle = joblib.load(path)
         if bundle["feature_version"] != FEATURE_VERSION:
             raise ValueError("Версия признаков не соответствует модели")

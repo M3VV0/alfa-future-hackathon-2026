@@ -56,10 +56,12 @@ public class DevelopmentDataInitializer implements ApplicationRunner {
 
     private UUID ensureBusiness(String id, Business.Type type, String taxId, String name) {
         jdbc.update("""
-                INSERT INTO "Business" ("id", "type", "taxId", "registeredName")
-                VALUES (?, ?, ?, ?)
+                INSERT INTO "Business" ("id", "type", "taxId", "registeredName", "registeredDate", "registrationStatus",
+                    "mspCategory", "mspAverageHeadcount", "ogrn", "mspIncludedOn", "mspReportYear")
+                VALUES (?, ?, ?, ?, DATE '2018-01-15', 'ACTIVE', 'MICRO', 10, ?, DATE '2018-02-01', 2025)
                 ON CONFLICT ("taxId") DO NOTHING
-                """, UUID.fromString(id), type.name(), taxId, name);
+                """, UUID.fromString(id), type.name(), taxId, name,
+                type == Business.Type.LEGAL_ENTITY ? "1187700000001" : "318770000000001");
         return jdbc.queryForObject("SELECT \"id\" FROM \"Business\" WHERE \"taxId\" = ?", UUID.class, taxId);
     }
 

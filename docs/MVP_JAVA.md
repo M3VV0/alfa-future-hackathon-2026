@@ -1,8 +1,9 @@
 # Java MVP: implemented scope and Python boundary
 
-The Java branch provides the client cabinet, draft and document workflow, durable dispatch queue,
-credit policy and offer lifecycle. There is **no local scoring provider, simulated model result or
-runtime callback generator**. Python is a separate, future dependency.
+Java provides the client cabinet, draft/document workflow, durable dispatch queue, credit policy and
+offer lifecycle. The current `scorer-service` branch includes the real Python/CatBoost service in Compose.
+There is no Java scoring fallback, dummy model result or runtime callback generator.
+For the integrated delivery see [README](../README.md) and [actual architecture](architecture/mvp.md).
 
 ## Run
 
@@ -11,13 +12,13 @@ docker compose --profile app up --build -d --wait
 ```
 
 Open <http://localhost:8080/login>. Docker and Compose are the only host requirements for this mode.
-`postgres` and `app` use persistent database storage. The `app` profile intentionally uses the existing
+`postgres`, `scorer` and `app` run together with persistent database storage. The `app` profile intentionally uses the existing
 `dev` authentication keys and synthetic accounts; it is a local review configuration, not a public
 production deployment. Native Java development remains available through `start_dev.sh` / `.bat`.
 Images for PostgreSQL and Java build/runtime are pinned by digest; the wrapper fixes Maven and the Spring Boot BOM
 fixes dependency versions. Initial builds need access to Docker Hub and Maven Central.
 
-Copy `.env.example` to `.env` to override ports or future scorer configuration. An existing database
+Copy `.env.example` to `.env` to override ports or scorer configuration. An existing database
 must pass Flyway validation; migrations V1–V5 are unchanged. Do not repair checksums or delete a
 working database to bypass validation: use a separate Compose project for a fresh review environment.
 
@@ -35,8 +36,9 @@ working database to bypass validation: use a separate Compose project for a fres
    document check, not OCR or external verification. All uploaded versions remain downloadable.
 6. Submit. Missing financials, company data or report produce `NEEDS_INFO` with a specific reason.
    Edit/upload and submit again using the same application UUID.
-7. A complete application becomes `SUBMITTED`. With `SCORER_ENABLED=false`, it stays there until
-   the future service is connected. This is the expected boundary of the current deployment.
+7. A complete application becomes `SUBMITTED`, is evaluated by the supplied Python model and reaches
+   `OFFERED` or `REJECTED` after Java policy. Disabling dispatch intentionally leaves SUBMITTED;
+   it is a development option, not the delivery default.
 8. Refresh or sign in again: the application, documents and history persist.
 
 The viewer account can read but cannot mutate. The other-company account cannot read, download,
@@ -44,16 +46,16 @@ edit or act on this company's application. Lists are scoped to memberships and s
 100 applications. Old applications created before this workflow are readable, with their existing
 scoring result, but cannot enter the new offer workflow retroactively.
 
-## Connect the future Python service
+## Scorer configuration
 
 ```sh
 SCORER_ENABLED=true \
-SCORER_BASE_URL=http://host.docker.internal:8000 \
+SCORER_BASE_URL=http://scorer:8000 \
 SCORER_TOKEN=choose-a-local-shared-token \
 docker compose --profile app up --build -d --wait
 ```
 
-For native Java the URL is normally `http://localhost:8000`. For Python in a Compose container, set
+Compose already supplies matching defaults for this configuration. For native Java the URL is normally `http://localhost:8000`. For Python in a Compose container, set
 an address resolvable on the shared network. Configure Python's Java callback URL explicitly:
 `http://app:8080/scored` in the same Compose network, or `http://localhost:8080/scored` on the host.
 The token must match on both sides. It is never passed to the browser. The Java process refuses
@@ -114,6 +116,7 @@ stateDiagram-v2
     SCORING --> OFFERED: callback + Java policy
     SCORING --> REJECTED: provider decline / affordability
     SCORING --> FAILED: technical failure
+    FAILED --> SUBMITTED: explicit retry
     FAILED --> OFFERED: valid late callback
     FAILED --> REJECTED: valid late callback
     OFFERED --> ACCEPTED
@@ -129,13 +132,13 @@ stateDiagram-v2
 ```
 
 Signing and disbursement are explicitly labelled simulations, never real signatures or payments.
-This does not simulate scoring. A fully positive path requires a real future scorer callback.
+This does not simulate scoring. A fully positive path requires the real scorer callback delivered by the supplied service.
 
 ## Data and API
 
 - `CreditApplication`: customer/company binding, editable draft parameters, technical state, original
   scorer result. Draft business binding is immutable; submitted parameters cannot be edited by API.
-- `CreditApplicationTask`: durable dispatch, exact input snapshot, attempt/lease/timeout metadata.
+- `CreditApplicationTask`: durable dispatch, exact input snapshot, attempt/lease/timeout metadata and dispatched evidence.
   `WAITING_INPUT` tasks cannot be claimed. All workflow changes serialize on this queue row.
 - `CreditDossier`: business state, financials, product, input revision, frozen submission, decision,
   initial idempotency key and input hash. The unique key is scoped to the creator.
@@ -148,7 +151,8 @@ This does not simulate scoring. A fully positive path requires a real future sco
 The cabinet OpenAPI is also served at authenticated `GET /api/credit/openapi`.
 
 All client mutations require JWT-cookie authentication and CSRF. `POST /scored` uses only the
-service token and its existing separate security chain. The client must fetch `/auth/csrf` after
+service token and its existing separate security chain. Technical FAILED may be retried explicitly through `/actions/retry`, retaining the input and UUID.
+The client must fetch `/auth/csrf` after
 login because login rotates CSRF. Draft creation requires a UUID `Idempotency-Key`; equal input
 returns the same UUID, different input returns 409. Decimal scale differences do not change the key.
 The browser retains the create key in sessionStorage across uncertain network responses.
@@ -165,14 +169,14 @@ Integration tests create/drop dedicated random schemas; no developer application
 Optional browser-helper tests use Node.js 18+: `node --test src/test/js/credit-api.test.cjs`
 from the backend directory. Node is not needed by the Java runtime.
 
-JUnit tests exercise the future callback and use an HTTP-client mock **only inside tests**, never as
+JUnit tests exercise the callback and use an HTTP-client mock **only inside tests**, never as
 an application scoring mode. Cases cover idempotency, concurrent creation, incomplete/mismatched
 reports, input freezing, all user permissions, CSRF, callback duplicates/conflicts, provider decline,
 technical failure, late results, cancellation, offer expiry and repeated lifecycle commands.
 
 ## Deliberate limits
 
-No Python runtime/service is added, and no local score or model result is generated. External registry,
+The Python service is included and applies the supplied trained model; no dummy scoring answers are generated. External registry,
 FNS and credit-bureau verification are not implemented; supplied company information is declared data.
 There is no arbitrary PDF/OCR intake, real legal signing or real disbursement. The earlier architecture
 is a broader target; this document describes the actual Java implementation and its explicit limits.

@@ -77,6 +77,8 @@ public class CreditApplication {
         this.request = Objects.requireNonNull(request);
     }
 
+    public void markPending() { this.status = Status.PENDING; }
+
     public void markProcessing() {
         this.status = Status.PROCESSING;
     }

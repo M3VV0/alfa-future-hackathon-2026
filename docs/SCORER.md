@@ -1,7 +1,7 @@
 # Java–Python scorer contract
 
-Java owns the client workflow and final product/affordability policy. Python will provide the external
-scoring service. **There is no local scorer, fallback model, generated callback or scoring demo mode.**
+Java owns the client workflow and final product/affordability policy. The supplied Python service runs the trained
+CatBoost model. **There is no dummy scorer, Java fallback, generated scoring answer or demo mode.**
 [Exchange OpenAPI](openapi/scorer.yaml) · [Java workflow and rules](MVP_JAVA.md).
 
 ## Request and acknowledgement
@@ -105,8 +105,8 @@ Legacy pre-MVP submissions retain their original result contract; their cabinet 
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SCORER_ENABLED` | `false` | Enable dispatch only when Python is ready |
-| `SCORER_BASE_URL` | `http://localhost:8000` natively; host gateway in Compose | Python URL reachable from Java |
+| `SCORER_ENABLED` | `true` in Compose; `false` for bare Java | Enable dispatch; true in the integrated Compose configuration |
+| `SCORER_BASE_URL` | `http://localhost:8000` natively; `http://scorer:8000` in Compose | Python URL reachable from Java |
 | `SCORER_TOKEN` | Empty | Shared token; enabled Java worker rejects an empty value |
 | `SCORER_CONNECT_TIMEOUT` | `PT3S` | Connection timeout |
 | `SCORER_READ_TIMEOUT` | `PT10S` | HTTP response timeout |
@@ -118,8 +118,8 @@ Legacy pre-MVP submissions retain their original result contract; their cabinet 
 | `SCORER_INITIAL_DELAY_MS` | `1000` | Initial worker delay |
 
 Configure Python's callback URL separately: `http://app:8080/scored` on the same Compose network,
-or the Java host URL. Without Python, leave dispatch disabled; full applications remain SUBMITTED.
-No model artifact or Python package is required by the Java container.
+or the Java host URL. Compose supplies both services and shared token configuration. The Python image includes the trained artifact;
+the Java image remains independent of Python packages. Native Java-only debugging may disable dispatch.
 
 ## Verification
 
@@ -127,3 +127,30 @@ Java tests exercise HTTP callbacks and mock the outgoing client strictly inside 
 snapshot freezing, callbacks before ACK, duplicate/conflicting results, authorization, decimal
 precision, bounded retries/timeouts, concurrent workers, late results and cancelled applications.
 No testing stub is installed as a runtime application mode. Commands are in [MVP_JAVA.md](MVP_JAVA.md).
+
+## Included Python runtime
+
+Run `python -m scorer_service` from `code/scorer`, or use the integrated Docker command. FastAPI starts
+one inference loop and one delivery loop and loads the model once. `/health` checks DB connectivity,
+model loading and live workers; `/docs` and `/openapi.json` describe the running Python API.
+
+Its own PostgreSQL schema defaults to `scorer` (`SCORER_DB_SCHEMA`). `scoring_queue` and `scoring_result`
+are independent of Java migrations. Queues persist attempts, ready/lease deadlines and ownership tokens.
+No DB lock is held while predicting or sending HTTP. Expired leases recover after a crash; stale owners
+cannot overwrite newer work. All failures are bounded; permanent 4xx do not block other applications.
+
+`SCORER_WORKER_POLL_SECONDS=.5`, `SCORER_RETRY_SECONDS=5`, `SCORER_MAX_ATTEMPTS=5`,
+`SCORER_LEASE_SECONDS=60`, `SCORER_PREDICTION_TIMEOUT_SECONDS=30`,
+`SCORER_CALLBACK_TIMEOUT_SECONDS=10`. A lease must exceed the timeouts by more than five seconds.
+A duplicate request for a failed computation may start a new bounded cycle. A saved result is always
+redelivered without recomputation. `sent_at` preserves the first successful delivery time.
+
+The model returns a rate, not a default probability. Adapter `rate-bands-v1` compares its unrounded
+value: below 12% or at least 35% gives DECLINED; [12,25) OK; [25,35) OFFER. The lower threshold is a
+prototype pricing bound, not evidence of insolvency. Java then applies separate product/affordability
+rules. The raw rate, callback, model SHA-256 and adapter version are stored before delivery.
+
+The old artifact failed the feature-code hash check. `export_model.py` rebuilt the selected CatBoost
+configuration on the same 8,000-row development split using the checked-in preprocessing. It did not
+rerun model search or fit on the reused 2,000-row diagnostic holdout. The version/metrics manifest is
+`artifacts/selected_model.validation.json`. Startup does not train and does not bypass hash validation.

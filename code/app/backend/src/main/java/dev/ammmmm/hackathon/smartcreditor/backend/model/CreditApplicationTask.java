@@ -37,6 +37,9 @@ public class CreditApplicationTask {
     private int attempts;
 
     @Column(nullable = false)
+    private boolean dispatched;
+
+    @Column(nullable = false)
     private Instant nextAttemptAt;
 
     @Column(nullable = false)
@@ -97,9 +100,17 @@ public class CreditApplicationTask {
         status = Status.WAITING_INPUT;
     }
 
+    public boolean hasBeenDispatched() { return dispatched; }
+
+    public void restart(Instant now) {
+        attempts = 0;
+        retry(now, now, null);
+    }
+
     public void claim(Instant now, Instant leaseExpiresAt) {
         status = Status.PROCESSING;
         attempts++;
+        dispatched = true;
         updatedAt = now;
         nextAttemptAt = leaseExpiresAt;
         lastError = null;

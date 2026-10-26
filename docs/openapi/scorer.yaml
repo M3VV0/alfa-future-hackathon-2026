@@ -1,11 +1,21 @@
 openapi: 3.0.3
 info:
   title: Scorer exchange
-  version: 1.0.0
-  description: Java sends a persisted application snapshot to the scorer; the scorer posts its result back to Java.
+  version: 1.1.0
+  description: Java sends a persisted application snapshot to the included CatBoost inference service; the service stores the real prediction and posts a frozen result back to Java with bounded retries.
 security:
   - scorerToken: []
 paths:
+  /health:
+    get:
+      servers: [{url: "http://localhost:8000"}]
+      security: []
+      summary: Check model, database and supervised workers
+      responses:
+        '200':
+          description: Model loaded, DB reachable and workers alive; includes model_version SHA-256
+        '503':
+          description: Worker or database unavailable
   /request:
     post:
       servers:
@@ -25,12 +35,20 @@ paths:
                   format: uuid
                 parameters:
                   type: object
+                  minProperties: 1
                   additionalProperties: true
+              additionalProperties: false
       responses:
         '202':
           description: Request committed; prediction and callback run asynchronously
+        '401':
+          description: Missing or invalid service token
         '409':
           description: Same id with conflicting parameters
+        '422':
+          description: Invalid request envelope or parameters containing target
+        '503':
+          description: Request was not committed because the queue is unavailable
   /scored:
     post:
       servers:

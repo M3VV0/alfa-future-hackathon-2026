@@ -2,3 +2,6 @@
 .DS_Store
 SUMMARY.md
 .env
+
+__pycache__/
+dist/
