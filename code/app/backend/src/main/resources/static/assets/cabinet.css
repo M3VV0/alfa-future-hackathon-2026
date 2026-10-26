@@ -1124,3 +1124,10 @@ select option {
 .document-link { display: block; margin: 16px 0; }
 .dossier-card li { margin: 12px 0; line-height: 1.6; }
 .dossier-card pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 700px) {
+    .sidebar { flex-wrap: wrap; }
+    .sidebar nav { display: flex; order: 3; flex-basis: 100%; gap: 8px; overflow-x: auto; }
+    .sidebar .nav-item { flex-shrink: 0; padding: 8px 10px; font-size: 12px; white-space: nowrap; }
+    .sidebar .nav-icon { font-size: 16px; }
+}
