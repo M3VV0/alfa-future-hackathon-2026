@@ -54,12 +54,14 @@ paths:
           description: Committed or identical result already stored
         '400':
           description: Invalid JSON, status, or financing terms
+        '422':
+          description: Positive result has unsupported product terms or rate (Java MVP policy validation)
         '401':
           description: Missing or invalid service token, or token not configured
         '404':
           description: Application not found
         '409':
-          description: Application not sent yet or conflicting result already stored
+          description: Application not sent yet, cancelled, or conflicting result already stored
 components:
   securitySchemes:
     scorerToken:

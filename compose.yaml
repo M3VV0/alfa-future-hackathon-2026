@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     environment:
       POSTGRES_DB: smartcreditor
       POSTGRES_USER: smartcreditor
@@ -15,6 +15,26 @@ services:
       timeout: 3s
       start_period: 10s
       retries: 12
+
+  app:
+    profiles: [app]
+    build: ./code/app/backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/smartcreditor
+      DB_USER: smartcreditor
+      DB_PASSWORD: localdev
+      SCORER_ENABLED: ${SCORER_ENABLED:-false}
+      SCORER_BASE_URL: ${SCORER_BASE_URL:-http://host.docker.internal:8000}
+      SCORER_TOKEN: ${SCORER_TOKEN:-}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

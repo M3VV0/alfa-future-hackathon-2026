@@ -1,6 +1,7 @@
 package dev.ammmmm.hackathon.smartcreditor.backend.service;
 
 import dev.ammmmm.hackathon.smartcreditor.backend.client.ScorerClient;
+import dev.ammmmm.hackathon.smartcreditor.backend.credit.CreditCabinetService;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplication;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplicationRequest;
 import dev.ammmmm.hackathon.smartcreditor.backend.model.CreditApplicationTask;
@@ -36,6 +37,7 @@ public class CreditApplicationService {
     private final BusinessRepository businesses;
     private final @Nullable ScorerClient scorer;
     private final TransactionTemplate transactions;
+    private final CreditCabinetService cabinet;
     private final int maxAttempts;
     private final Duration retryDelay;
     private final Duration requestLease;
@@ -46,6 +48,7 @@ public class CreditApplicationService {
                                     BusinessRepository businesses,
                                     ObjectProvider<ScorerClient> scorerProvider,
                                     PlatformTransactionManager transactionManager,
+                                    CreditCabinetService cabinet,
                                     @Value("${credit.application.worker.enabled:false}") boolean enabled,
                                     @Value("${scorer.max-attempts:5}") int maxAttempts,
                                     @Value("${scorer.retry-delay:PT5S}") Duration retryDelay,
@@ -55,6 +58,7 @@ public class CreditApplicationService {
                 || callbackTimeout.isNegative() || callbackTimeout.isZero()) {
             throw new IllegalArgumentException("Invalid scorer retry or timeout configuration");
         }
+        this.cabinet = cabinet;
         this.applications = applications;
         this.tasks = tasks;
         this.businesses = businesses;
@@ -109,11 +113,13 @@ public class CreditApplicationService {
         if (task.getAttempts() >= maxAttempts) {
             task.fail(now, "SCORER_TIMEOUT");
             application.markFailed();
+            cabinet.scoringFailed(application.getId(), "SCORER_TIMEOUT");
             return null;
         }
         if (task.getRequestPayload() == null) task.setRequestPayload(createScorerPayload(application));
         task.claim(now, now.plus(requestLease));
         application.markProcessing();
+        cabinet.scoringStarted(application.getId());
         return new Dispatch(application.getId(), task.getAttempts(), task.getRequestPayload());
     }
 
@@ -134,6 +140,7 @@ public class CreditApplicationService {
             } else if (permanent || task.getAttempts() >= maxAttempts) {
                 task.fail(now, error);
                 applications.findById(dispatch.id()).orElseThrow().markFailed();
+                cabinet.scoringFailed(dispatch.id(), error);
             } else {
                 task.retry(now, now.plus(retryDelay), error);
             }
@@ -151,10 +158,11 @@ public class CreditApplicationService {
             }
             return;
         }
-        if (task.getStatus() == CreditApplicationTask.Status.PENDING && task.getAttempts() == 0) {
+        if (task.getAttempts() == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Application has not been dispatched");
         }
         Instant now = Instant.now();
+        cabinet.scoringCompleted(application, result, now);
         application.complete(result, now);
         task.complete(now);
     }

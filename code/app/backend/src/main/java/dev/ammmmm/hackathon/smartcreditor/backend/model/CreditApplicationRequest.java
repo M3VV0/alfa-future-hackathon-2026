@@ -22,28 +22,28 @@ public record CreditApplicationRequest(
         @NotNull
         @DecimalMin(value = "0", inclusive = false)
         @Digits(integer = 15, fraction = 2)
-        @Column(nullable = false, updatable = false, precision = 17, scale = 2)
+        @Column(nullable = false, precision = 17, scale = 2)
         BigDecimal requestedAmount,
 
         @NotNull
         @Positive
-        @Column(nullable = false, updatable = false)
+        @Column(nullable = false)
         Integer termMonths,
 
         @NotNull
         @Enumerated(EnumType.STRING)
-        @Column(nullable = false, updatable = false, length = 16)
+        @Column(nullable = false, length = 16)
         PaymentFrequency paymentFrequency,
 
         @NotNull
         @Enumerated(EnumType.STRING)
-        @Column(nullable = false, updatable = false, length = 32)
+        @Column(nullable = false, length = 32)
         FinancingPurpose financingPurpose,
 
         @Nullable
         @DecimalMin("0")
         @Digits(integer = 15, fraction = 2)
-        @Column(updatable = false, precision = 17, scale = 2)
+        @Column(precision = 17, scale = 2)
         BigDecimal declaredCollateralValue) {
 
     public enum PaymentFrequency {

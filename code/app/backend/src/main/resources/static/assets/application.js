@@ -1,225 +1,101 @@
-(() => {
+(async () => {
     "use strict";
-
+    const {request, text, money, json} = window.credit;
     const form = document.getElementById("application-form");
-    const field = (name) => form.elements.namedItem(name);
+    const field = name => form.elements.namedItem(name);
     const button = document.getElementById("submit-button");
-    const buttonLabel = document.getElementById("submit-label");
     const errorBox = document.getElementById("submission-error");
     const errorText = document.getElementById("submission-error-text");
-    const loginLink = document.getElementById("login-again");
-    const workspace = document.getElementById("application-workspace");
-    const success = document.getElementById("submission-success");
-    const submitLabel = buttonLabel.textContent;
-    const emptySummary = Object.fromEntries(
-        ["amount", "term", "purpose", "collateral"].map(name => [
-            name, document.getElementById(`summary-${name}`).textContent
-        ])
-    );
-    const moneyFormatter = new Intl.NumberFormat(document.documentElement.lang, {
-        style: "currency", currency: "RUB", minimumFractionDigits: 0, maximumFractionDigits: 2
-    });
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const validatedFieldNames = ["businessId", "requestedAmount", "termMonths", "financingPurpose", "declaredCollateralValue"];
-    const moneyPattern = /^\d{1,15}(\.\d{1,2})?$/;
-    let submitting = false;
-    let accepted = false;
-
-    function moneyValue(value) {
-        return value.trim().replace(/[\s\u00a0\u202f]/g, "").replace(",", ".");
-    }
-
-    // Keep monetary values as decimal strings; Number can round valid 15-digit amounts.
-    function displayMoney(value) {
-        const normalized = moneyValue(value);
-        if (!moneyPattern.test(normalized)) return null;
-        return moneyFormatter.format(normalized);
-    }
-
-    function updateSummary() {
-        document.getElementById("summary-amount").textContent = displayMoney(field("requestedAmount").value) || emptySummary.amount;
-        document.getElementById("summary-term").textContent = field("termMonths").value ? `${field("termMonths").value} ${form.dataset.monthsUnit}` : emptySummary.term;
-        const purpose = field("financingPurpose");
-        document.getElementById("summary-purpose").textContent = purpose.value ? purpose.selectedOptions[0].textContent : emptySummary.purpose;
+    const editId = new URLSearchParams(location.search).get("edit");
+    let products = [];
+    let busy = false;
+    const normalize = value => value.trim().replace(/[\s\u00a0\u202f]/g, "").replace(",", ".");
+    const decimal = (name, optional = false) => {
+        const value = normalize(field(name).value);
+        if (optional && !value) return null;
+        if (!/^\d{1,15}(\.\d{1,2})?$/.test(value)) throw new Error(text("Введите суммы без отрицательных значений, до двух знаков после запятой.", "Enter non-negative amounts with at most two decimal places."));
+        return value;
+    };
+    function error(message) { errorText.textContent = message; errorBox.hidden = false; errorBox.focus(); }
+    function summary() {
+        for (const [name, source] of [["amount", "requestedAmount"], ["collateral", "declaredCollateralValue"]]) {
+            const value = normalize(field(source).value);
+            document.getElementById(`summary-${name}`).textContent = /^\d+(\.\d{1,2})?$/.test(value) ? money(value) : "—";
+        }
+        document.getElementById("summary-term").textContent = `${field("termMonths").value || "—"} ${form.dataset.monthsUnit}`;
+        document.getElementById("summary-purpose").textContent = field("financingPurpose").selectedOptions[0]?.textContent || "—";
         document.getElementById("summary-frequency").textContent = form.querySelector('input[name="paymentFrequency"]:checked').closest("label").querySelector("span").textContent;
-        document.getElementById("summary-collateral").textContent = displayMoney(field("declaredCollateralValue").value) || emptySummary.collateral;
     }
-
-    function setError(name, message) {
-        const input = field(name);
-        input.setCustomValidity(message);
-        input.setAttribute("aria-invalid", String(Boolean(message)));
-        const label = document.getElementById(`${name}-error`);
-        if (label) {
-            label.textContent = message;
-            label.hidden = !message;
+    function productChanged(reset) {
+        const product = products.find(item => item.id === field("productId").value);
+        if (!product) return;
+        field("termMonths").min = product.minMonths;
+        field("termMonths").max = product.maxMonths;
+        if (reset) {
+            field("termMonths").value = product.minMonths;
+            field("financingPurpose").value = product.purpose;
         }
+        document.getElementById("product-terms").textContent = `${money(product.minAmount)} – ${money(product.maxAmount)} · ${product.minMonths}–${product.maxMonths} ${form.dataset.monthsUnit}`;
+        summary();
     }
-
-    function validateField(name) {
-        const input = field(name);
-        const value = input.value.trim();
-        let message = "";
-        if (name === "businessId") {
-            if (!uuidPattern.test(value)) message = input.dataset.invalidMessage;
-        } else if (name === "requestedAmount" || name === "declaredCollateralValue") {
-            const normalized = moneyValue(value);
-            if (name === "declaredCollateralValue" && !normalized) {
-                setError(name, "");
-                return true;
-            }
-            if (!moneyPattern.test(normalized)) {
-                message = input.dataset.invalidMessage;
-            } else if (name === "requestedAmount" && !/[1-9]/.test(normalized)) {
-                message = input.dataset.positiveMessage;
-            }
-        } else if (name === "termMonths") {
-            if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 2147483647) {
-                message = input.dataset.invalidMessage;
-            }
-        } else if (name === "financingPurpose" && !value) {
-            message = input.dataset.invalidMessage;
+    try {
+        const [companies, catalog] = await Promise.all([request("/api/credit/companies"), request("/api/credit/products")]);
+        products = catalog;
+        field("businessId").replaceChildren();
+        for (const company of companies) {
+            const option = new Option(`${company.name || company.inn} · ${company.inn}`, company.id);
+            option.disabled = company.role === "VIEWER";
+            field("businessId").add(option);
         }
-        setError(name, message);
-        return !message;
-    }
-
-    function showError(message, needsLogin = false) {
-        errorText.textContent = message;
-        loginLink.hidden = !needsLogin;
-        errorBox.hidden = false;
-        errorBox.focus();
-    }
-
-    async function postWithCsrf(url, payload) {
-        const response = await fetch(form.dataset.csrfUrl, {
-            credentials: "same-origin", cache: "no-store", headers: {"Accept": "application/json"}
-        });
-        if (!response.ok) throw new Error(`CSRF token request failed: HTTP ${response.status}`);
-        const {headerName, token} = await response.json();
-        if (typeof headerName !== "string" || !headerName || typeof token !== "string" || !token) {
-            throw new Error("Invalid CSRF token response");
+        const writable = companies.find(company => company.role !== "VIEWER");
+        if (!writable) throw new Error(text("Нет компаний с правом подачи заявки.", "No companies available for application submission."));
+        field("businessId").value = writable.id;
+        for (const product of products) field("productId").add(new Option(text(product.name, product.id === "equipment" ? "Equipment" : "Working capital"), product.id));
+        productChanged(true);
+        if (editId) {
+            const view = await request(`/api/credit/applications/${encodeURIComponent(editId)}`);
+            if (!["DRAFT", "NEEDS_INFO"].includes(view.state) || !view.canManage) throw new Error(text("Заявка недоступна для редактирования.", "Application cannot be edited."));
+            for (const [name, value] of Object.entries(view.application)) if (field(name)) field(name).value = value ?? "";
+            field("productId").value = view.productId;
+            for (const [name, value] of Object.entries(view.financials || {})) field(name).value = value;
+            field("businessId").disabled = true;
+            productChanged(false);
         }
-        return fetch(url, {
-            method: "POST", credentials: "same-origin",
-            headers: {
-                [headerName]: token, ...(payload ? {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                } : {})
-            },
-            ...(payload ? {body: JSON.stringify(payload)} : {}),
-        });
-    }
-
-    async function send(payload) {
-        const submit = () => postWithCsrf(form.action, payload);
-        let response = await submit();
-        // A 401 is rejected before the command runs; only this case is safe to retry automatically.
-        if (response.status === 401) {
-            const refreshed = await postWithCsrf(form.dataset.refreshUrl);
-            if (refreshed.ok) response = await submit();
-        }
-        return response;
-    }
-
-    form.noValidate = true;
-    for (const name of validatedFieldNames) {
-        field(name).addEventListener("blur", () => validateField(name));
-        field(name).addEventListener("input", () => {
-            if (field(name).getAttribute("aria-invalid") === "true") validateField(name);
-        });
-    }
-    form.addEventListener("input", updateSummary);
-    form.addEventListener("change", updateSummary);
-    form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        if (submitting || accepted) return;
-        errorBox.hidden = true;
-        const valid = validatedFieldNames
-            .map(validateField).every(Boolean);
-        if (!valid) {
-            form.querySelector('[aria-invalid="true"]').focus();
-            return;
-        }
-        const payload = {
-            businessId: field("businessId").value.trim(),
-            requestedAmount: moneyValue(field("requestedAmount").value),
-            termMonths: Number(field("termMonths").value),
-            paymentFrequency: field("paymentFrequency").value,
-            financingPurpose: field("financingPurpose").value,
-            declaredCollateralValue: moneyValue(field("declaredCollateralValue").value) || null,
-        };
-        const editableFields = [...form.querySelectorAll("input:enabled, select:enabled")];
-        submitting = true;
-        for (const input of editableFields) input.disabled = true;
-        button.disabled = true;
-        buttonLabel.textContent = button.dataset.submittingLabel;
-        form.setAttribute("aria-busy", "true");
-        try {
-            const response = await send(payload);
-            if (response.status === 202) {
-                const result = await response.json();
-                if (typeof result.applicationId !== "string" || !uuidPattern.test(result.applicationId)) {
-                    throw new Error("Missing application identifier");
-                }
-                accepted = true;
-                document.getElementById("application-id").textContent = result.applicationId;
-                workspace.hidden = true;
-                success.hidden = false;
-                document.querySelector(".status-badge").hidden = true;
-                document.getElementById("success-title").focus();
-            } else if (response.status === 401) {
-                showError(form.dataset.sessionExpired, true);
-            } else if (response.status === 403) {
-                showError(form.dataset.forbidden);
-            } else if (response.status === 404) {
-                setError("businessId", form.dataset.businessUnavailable);
-                showError(form.dataset.businessNotFound);
-            } else if (response.status === 400 || response.status === 422) {
-                showError(form.dataset.invalidRequest);
-            } else {
-                showError(form.dataset.unconfirmed);
-            }
-        } catch (error) {
-            console.error("Credit application submission failed", error);
-            showError(form.dataset.networkError);
-        } finally {
-            submitting = false;
-            for (const input of editableFields) input.disabled = false;
-            button.disabled = accepted;
-            buttonLabel.textContent = submitLabel;
-            form.removeAttribute("aria-busy");
-        }
-    });
-
-    document.getElementById("new-application").addEventListener("click", () => {
-        form.reset();
-        for (const name of validatedFieldNames) setError(name, "");
-        accepted = false;
         button.disabled = false;
-        success.hidden = true;
-        workspace.hidden = false;
-        document.querySelector(".status-badge").hidden = false;
-        updateSummary();
-        field("businessId").focus();
-    });
-
-    document.getElementById("logout-form").addEventListener("submit", async (event) => {
+    } catch (failure) { error(failure.message); }
+    field("productId").addEventListener("change", () => productChanged(true));
+    field("financingPurpose").disabled = true;
+    form.addEventListener("input", summary);
+    form.addEventListener("change", summary);
+    form.addEventListener("submit", async event => {
         event.preventDefault();
-        const logoutButton = event.currentTarget.querySelector("button");
-        const logoutUrl = event.currentTarget.action;
-        logoutButton.disabled = true;
+        if (busy) return;
+        errorBox.hidden = true;
         try {
-            const response = await postWithCsrf(logoutUrl);
-            if (!response.ok) throw new Error(`Logout failed: HTTP ${response.status}`);
-            window.location.assign(form.dataset.loginUrl);
-        } catch (error) {
-            console.error("Logout failed", error);
-            showError(form.dataset.logoutError);
-            logoutButton.disabled = false;
-        }
+            const financeFields = ["monthlyRevenue", "monthlyExpenses", "existingMonthlyPayment"];
+            const hasFinance = financeFields.some(name => field(name).value.trim());
+            const payload = {productId: field("productId").value, application: {
+                businessId: field("businessId").value, requestedAmount: decimal("requestedAmount"),
+                termMonths: Number(field("termMonths").value), paymentFrequency: field("paymentFrequency").value,
+                financingPurpose: field("financingPurpose").value, declaredCollateralValue: decimal("declaredCollateralValue", true)
+            }, financials: hasFinance ? Object.fromEntries(financeFields.map(name => [name, decimal(name)])) : null};
+            const signature = JSON.stringify(payload);
+            let pending;
+            try { pending = JSON.parse(sessionStorage.getItem("credit-create")); } catch (_) { /* New key below. */ }
+            if (!pending || pending.signature !== signature) pending = {signature, key: crypto.randomUUID()};
+            sessionStorage.setItem("credit-create", JSON.stringify(pending));
+            busy = true;
+            button.disabled = true;
+            const options = {...json(payload), method: editId ? "PUT" : "POST"};
+            options.headers["Idempotency-Key"] = pending.key;
+            const result = await request(editId ? `/api/credit/applications/${encodeURIComponent(editId)}` : form.action, options);
+            sessionStorage.removeItem("credit-create");
+            location.assign(`/app/applications/${encodeURIComponent(editId || result.applicationId)}`);
+        } catch (failure) { error(failure.message); busy = false; button.disabled = false; }
     });
-    button.disabled = false;
-    updateSummary();
+    document.getElementById("logout-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        try { await request(event.currentTarget.action, {method: "POST"}); location.assign("/login"); }
+        catch (failure) { error(failure.message); }
+    });
 })();
