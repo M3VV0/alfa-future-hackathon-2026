@@ -1,6 +1,6 @@
 # Java–scorer integration
 
-Java sends `POST /request` to an external scorer and receives results at `POST /scored`. The Python model and scorer server are outside this integration. [OpenAPI contract](openapi/scorer.yaml).
+Java sends `POST /request` to the Python scorer service and receives results at `POST /scored`. Request acceptance, the PostgreSQL queue, prediction, and callback workers are implemented in [`code/scorer/scorer_service`](../code/scorer/scorer_service). [OpenAPI contract](openapi/scorer.yaml).
 
 ## Scoring request
 
@@ -35,6 +35,11 @@ X-Scorer-Token: <SCORER_TOKEN>
 - Unknown data: `null`, never fabricated values. A stub may accept missing `msp_category`, but real prediction requires all mandatory model fields or a technical error. Data enrichment is outside this integration.
 
 The scorer must persist the request and return **`202 Accepted` after commit**, then asynchronously run prediction and send the callback. Repeated requests with the same `id` and parameters return `202` without creating another task; a completed result may be sent again. Different parameters for the same `id` return `409`. This enables retries after network failures or Java restarts.
+
+The implemented FastAPI endpoint validates the request envelope, rejects a
+missing or invalid service token with `401`, and returns `503` without
+acknowledgement if the database transaction cannot be committed. The queue
+table is created automatically when the service starts.
 
 ## Result callback
 
